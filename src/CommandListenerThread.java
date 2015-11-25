@@ -5,22 +5,25 @@ public class CommandListenerThread extends Observable implements Runnable {
 	private boolean stopFlag;
 	private boolean disconnected;
 	private Connection con;
-	private Command lastCommand;
+	private Command lastCommand = new Command();
 
 	public CommandListenerThread() {
-		// TODO Auto-generated constructor stub
 	}
 
 	public CommandListenerThread(Connection connection) {
-		// TODO Auto-generated constructor stub
+		this.disconnected = false;
+		this.con = connection;
+		this.lastCommand = new Command();
 	}
 
 	void setConnection(Connection con) {
 		disconnected = false;
 		this.con = con;
+		lastCommand = new Command();
 	}
 
 	Command getLastCommand() {
+		assert lastCommand == null;
 		return lastCommand;
 	}
 
@@ -30,30 +33,36 @@ public class CommandListenerThread extends Observable implements Runnable {
 
 	@Override
 	public void run() {
-		while (!disconnected) {
-			try {
-				synchronized (this) {
-					this.lastCommand = con.receive();
-					//System.out.printf("%s %s\n", lastCommand.getClass(), lastCommand.toString());
-					if (lastCommand != null)
-						if ((lastCommand.type == (Command.CommandType.DISCONNECT)
-								|| (lastCommand.type.toString().equals ("Rejected")))) {
-							disconnected = true;
-							System.out.println("test");
-					
+			while (!disconnected) {
+				try {
+					synchronized (this) {
+							try {
+								this.lastCommand = con.receive();
+								System.out.printf("%s %s\n", lastCommand.getClass(), lastCommand.toString());
+							} catch (NullPointerException e) {
+							}
 						}
-					setChanged();
-					notifyObservers();
-				
+
+
+						if (lastCommand != null)
+							if ((lastCommand.type == (Command.CommandType.DISCONNECT)
+									|| (lastCommand.type.toString().equals("REJECTED")))) {
+								disconnected = true;
+								System.out.println("test");
+
+							}
+
+					}
+				 catch (IOException e) {
+
+					e.printStackTrace();
 				}
-			} catch (IOException e) {
 
-				e.printStackTrace();
+				this.setChanged();
+				this.notifyObservers();
+
 			}
-					
 		}
-
-	}
 
 	void start() {
 		Thread t = new Thread(this);
@@ -62,7 +71,6 @@ public class CommandListenerThread extends Observable implements Runnable {
 
 	void stop() {
 		disconnected = true;
-
 	}
 
 }

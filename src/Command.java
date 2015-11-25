@@ -14,11 +14,15 @@ public class Command {
 			public String toString() {
 				return "REJECTED";
 			}
-		}
+		}, NULL
 	}
 
 	public Command(CommandType type) {
 		this.type = type;
+	}
+
+	public Command() {
+		type = CommandType.NULL;
 	}
 
 	@Override
