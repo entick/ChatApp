@@ -1,3 +1,4 @@
+
 public class Command {
 
 	CommandType type;
@@ -9,7 +10,7 @@ public class Command {
 				return "ACCEPTED";
 			}
 		},
-		DISCONNECT, MESSAGE, NICK, REJECT {
+	DISCONNECT, MESSAGE, NICK, REJECT {
 			@Override
 			public String toString() {
 				return "REJECTED";
@@ -29,4 +30,5 @@ public class Command {
 	public String toString() {
 		return type.toString();
 	}
+	
 }
