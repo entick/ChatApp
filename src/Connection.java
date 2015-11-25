@@ -74,7 +74,7 @@ public class Connection {
 			Scanner in = new Scanner(str);
 			in.next();
 			return new NickCommand(in.next(), in.skip(" [a-z,A-Z]{4} ").next(), str.toUpperCase().endsWith(" BUSY"));
-		} else if ("MESSAGE".equalsIgnoreCase(str)) {
+		} else if (str.toUpperCase().equals("MESSAGE")) {
 			sb = new StringBuffer();
 			while ((c = (char) inStream.read()) != EOL)
 				sb.append(c);
@@ -85,7 +85,7 @@ public class Connection {
 				if (cc.toString().equals(str))
 					return new Command(Command.CommandType.valueOf(str.replaceAll("ED", "")));
 		}
-		return null;
+		return new Command(Command.CommandType.NULL);
 	}
 
 }

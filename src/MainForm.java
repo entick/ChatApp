@@ -298,7 +298,16 @@ public class MainForm<JForm> {
 			public void update(Observable arg0, Object arg1) {
 				//TODO:Thread, TimeOut;
 				System.out.println("update listener");
-				connection = callLT.getConnection();	
+				connection = callLT.getConnection();
+				try {
+					connection.sendNickHello(nickField.getText());
+				} catch (UnsupportedEncodingException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 				commandLT.setConnection(connection);
 				commandLT.start();
 				System.out.println("CLT started");
@@ -306,7 +315,6 @@ public class MainForm<JForm> {
 				long t2 = System.currentTimeMillis();
 				boolean b = false;
 				while (((t2 - t1) <= 100000) && !b) {
-					System.out.println("start while");
 					Command command = commandLT.getLastCommand();
 					try {
 						System.out.println(command.getClass() + command.toString());
@@ -317,9 +325,10 @@ public class MainForm<JForm> {
 						int reply = JOptionPane.showConfirmDialog(null,
 								"Do you want to accept incoming connection from user ".concat(command.toString()), "",
 								JOptionPane.YES_NO_OPTION);
+						System.out.println(reply);
 
 						try {
-							if (reply == JOptionPane.YES_OPTION) {
+							if (reply == 0) {
 								b = true;
 								connection.sendNickHello(nickField.getText());
 								connection.accept();
@@ -374,6 +383,7 @@ public class MainForm<JForm> {
 			public void update(Observable arg0, Object arg1) {
 				System.out.println("testobs");
 				Command lastCommand = commandLT.getLastCommand();
+				System.out.println(lastCommand.getClass()+" "+lastCommand.toString());
 				if (lastCommand instanceof MessageCommand) {
 					model.addMessage(remoteLogiField.getText(), new Date(), commandLT.getLastCommand().toString());
 					textArea.update(model, new Object());

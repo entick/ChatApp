@@ -40,6 +40,8 @@ public class CommandListenerThread extends Observable implements Runnable {
 								this.lastCommand = con.receive();
 								System.out.printf("%s %s\n", lastCommand.getClass(), lastCommand.toString());
 							} catch (NullPointerException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
 							}
 						}
 
