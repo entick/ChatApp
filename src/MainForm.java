@@ -4,16 +4,21 @@ import java.awt.Graphics;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JTextField;
 import java.awt.GridLayout;
+import java.awt.List;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseListener;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.rmi.UnexpectedException;
@@ -27,8 +32,10 @@ import javax.swing.GroupLayout.Alignment;
 import java.awt.BorderLayout;
 import javax.swing.JFormattedTextField;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.SwingConstants;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 import java.awt.Dimension;
@@ -37,6 +44,9 @@ import java.awt.Container;
 
 import javax.swing.border.BevelBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.omg.CORBA.portable.UnknownException;
 
@@ -66,6 +76,9 @@ public class MainForm {
 	private HistoryModel model;
 	private CommandListenerThread commandLT;
 	private int isPressed;
+	private ServerConnection server;
+	private ContactsView friends;
+	private JList list=new JList();
 
 	/**
 	 * Launch the application.
@@ -78,6 +91,7 @@ public class MainForm {
 				try {
 					MainForm window = new MainForm();
 					window.frame.setVisible(true);
+					Class.forName("com.mysql.jdbc.Driver");
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -92,9 +106,11 @@ public class MainForm {
 	 */
 	public MainForm() throws IOException {
 		frame = new JFrame();
-		frame.setBounds(100, 100, 481, 243);
+		frame.setBounds(100, 100, 850, 400);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.Y_AXIS));
+		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
+		JPanel mainPanel = new JPanel();
+		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 		JPanel top_panel = new JPanel();
 		top_panel.setLayout(new BoxLayout(top_panel, BoxLayout.X_AXIS));
 		JPanel panel_login = new JPanel();
@@ -102,7 +118,7 @@ public class MainForm {
 		JPanel panel_nick = new JPanel();
 		panel_nick.setLayout(new BoxLayout(panel_nick, BoxLayout.X_AXIS));
 		panel_login.add(panel_nick);
-
+		
 		JLabel loginLabel = new JLabel("local login");
 		panel_nick.add(loginLabel);
 
@@ -114,7 +130,7 @@ public class MainForm {
 		JPanel panel_connection = new JPanel();
 		panel_connection.setMaximumSize(new Dimension(32767, 100));
 		panel_connection.setLayout(new GridLayout(2, 3));
-		frame.getContentPane().add(top_panel);
+		mainPanel.add(top_panel);
 		top_panel.add(panel_login);
 
 		JButton nickApplyButton = new JButton("Apply");
@@ -152,7 +168,7 @@ public class MainForm {
 		main_panel.setLayout(new GridLayout(1, 1));
 		JPanel bot_panel = new JPanel();
 		bot_panel.setLayout(new BoxLayout(bot_panel, BoxLayout.X_AXIS));
-		frame.getContentPane().add(main_panel);
+		mainPanel.add(main_panel);
 		model = new HistoryModel();
 		textArea = new HistoryView(model);
 		textArea.setBackground(new Color(255, 255, 204));
@@ -163,7 +179,7 @@ public class MainForm {
 		JScrollPane scroll = new JScrollPane(textArea);
 		scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 		main_panel.add(scroll);
-		frame.getContentPane().add(bot_panel);
+		mainPanel.add(bot_panel);
 		messageArea = new JTextArea();
 		messageArea.setMinimumSize(new Dimension(16, 4));
 		messageArea.setMaximumSize(new Dimension(800, 100));
@@ -177,6 +193,59 @@ public class MainForm {
 		send.setAlignmentX(Component.CENTER_ALIGNMENT);
 		send.setEnabled(false);
 		bot_panel.add(send);
+
+		JPanel contactsPanel = new JPanel();
+		frame.getContentPane().add(contactsPanel);
+		contactsPanel.setPreferredSize(new Dimension(200,400));
+		contactsPanel.setLayout(new BorderLayout());
+		JPanel forLabel=new JPanel();
+		JLabel name = new JLabel("List of person on server");
+		forLabel.add(name);
+		contactsPanel.add(forLabel, BorderLayout.NORTH);
+		JPanel forButton = new JPanel();
+		JButton update = new JButton("Update");
+		contactsPanel.setBorder(BorderFactory.createEtchedBorder());
+		forButton.add(update);
+		contactsPanel.add(forButton, BorderLayout.WEST);
+		JPanel forButton1 = new JPanel();
+		JButton save = new JButton("Save to..");
+		update.setEnabled(false);
+		contactsPanel.add(forButton1, BorderLayout.EAST);
+		forButton1.add(save);
+		save.setEnabled(false);
+		frame.getContentPane().add(mainPanel);
+		update.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				if (server != null) {
+					friends = new ContactsView(server);
+					list = new JList(friends);
+					JLabel l=new JLabel();
+					l.add(list);
+					contactsPanel.add(l,BorderLayout.CENTER);
+				}
+			}
+
+		});
+		save.addActionListener(new ActionListener() {
+
+			public void actionPerformed(ActionEvent e) {
+				FileNameExtensionFilter filter = new FileNameExtensionFilter("*.TXT","*.*");
+				
+				JFileChooser fileOpen = new JFileChooser();
+				fileOpen.setFileFilter(filter);
+				if ( fileOpen.showSaveDialog(null) == JFileChooser.APPROVE_OPTION ) {
+		            try ( FileWriter fw = new FileWriter(fileOpen.getSelectedFile()) ) {
+		            	for(int i=0;i<friends.getStr().length;i++)
+		                fw.write(friends.getStr()[i]+"\n");
+		            }
+		            catch ( IOException e1 ) {
+		                
+		            }
+		        }
+			}
+			});
+
 		discButton.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent e) {
@@ -199,18 +268,16 @@ public class MainForm {
 			public void actionPerformed(ActionEvent e) {
 				if (remoteAddrField.getText() != "") {
 					String login;
-					if (nickField.getText().equals(""))
-						login = "unnamed";
-					else
-						login = nickField.getText();
+					login = nickField.getText();
 					caller = new Caller(login, remoteAddrField.getText());
 					try {
 						connection = caller.call();
 						if (connection != null) {
-							connection.sendNickHello(nickField.getText());
-							forConnect();
 							commandLT = new CommandListenerThread(connection);
 							commandLT.start();
+							connection.sendNickHello(nickField.getText());
+							forConnect();
+
 						}
 					} catch (InterruptedException e1) {
 
@@ -223,6 +290,8 @@ public class MainForm {
 						e1.printStackTrace();
 					}
 
+				} else {
+					JOptionPane.showMessageDialog(null, "You must write remote address");
 				}
 			}
 		});
@@ -247,23 +316,51 @@ public class MainForm {
 			public void actionPerformed(ActionEvent e) {
 				String login;
 				if (nickField.getText().equals("")) {
-					login = "unnamed";
-					nickField.setText(login);
-				} else
+					JOptionPane.showMessageDialog(null, "You must write your login");
+				} else {
 					login = nickField.getText();
-				nickField.setEnabled(false);
-				try {
-					callLT = new CallListenerThread();
-					callLT.start();
-					commandLT = new CommandListenerThread();
-					ThreadOfCall();
-					// ThreadOfCommand();
+					try {
+						//I'm not sure
+						InetAddress addr = InetAddress.getLocalHost();
+						server = new ServerConnection(addr.toString(), login);
+						server.connect();
+						server.goOnline();
+					} catch (UnknownHostException e2) {
+						// TODO Auto-generated catch block
+						e2.printStackTrace();
+					}
+					nickField.setEnabled(false);
+					friends = new ContactsView(server);
+					list = new JList(friends);
+					JLabel l=new JLabel();
+					l.add(list);
+					contactsPanel.add(l,BorderLayout.CENTER);
+					list.addListSelectionListener(new ListSelectionListener() {
+						public void valueChanged(ListSelectionEvent e) {
+							if (connection == null) {
+								remoteLogiField.setText(list.getSelectedValue().toString());
+								remoteAddrField.setText(server.getIpForNick(list.getSelectedValue().toString()));
+							} else {
+								JOptionPane.showMessageDialog(null, "You must disconnect to choose");
+							}
+						}
+					});
+					nickApplyButton.setEnabled(false);
+					save.setEnabled(true);
+					update.setEnabled(true);
+					try {
+						callLT = new CallListenerThread();
+						callLT.start();
+						commandLT = new CommandListenerThread();
+						ThreadOfCall();
+						// ThreadOfCommand();
 
-				} catch (IOException e1) {
-					e1.printStackTrace();
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+
+					callLT.setLocalNick(login);
 				}
-
-				callLT.setLocalNick(login);
 			}
 		});
 	}
