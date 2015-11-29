@@ -216,7 +216,6 @@ public class MainForm<JForm> {
 							commandLT.start();
 							connection.sendNickHello(nickField.getText());
 							forConnect();
-
 						}
 					} catch (InterruptedException e1) {
 
@@ -330,7 +329,6 @@ public class MainForm<JForm> {
 						try {
 							if (reply == 0) {
 								b = true;
-								connection.sendNickHello(nickField.getText());
 								connection.accept();
 								remoteAddrField.setText(callLT.getRemoteAddress().toString());
 								remoteLogiField.setText(command.toString());
@@ -387,15 +385,7 @@ public class MainForm<JForm> {
 				if (lastCommand instanceof MessageCommand) {
 					model.addMessage(remoteLogiField.getText(), new Date(), commandLT.getLastCommand().toString());
 					textArea.update(model, new Object());
-				} else if (lastCommand instanceof NickCommand) {
-					if (!forAccept){
-						EventQueue.invokeLater(new Runnable(){
-							public void run(){
-								formForConnect(true,lastCommand.toString());
-							}
-						});
-					}
-						
+				} else if (lastCommand instanceof NickCommand) {				
 				} else if (lastCommand != null) {
 					switch (lastCommand.type) {
 					case ACCEPT: {
