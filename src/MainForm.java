@@ -35,6 +35,7 @@ import javax.swing.JTextArea;
 import java.awt.Dimension;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 
 import javax.swing.border.BevelBorder;
 import javax.swing.border.LineBorder;
@@ -212,8 +213,9 @@ public class MainForm<JForm> {
 					try {
 						connection = caller.call();
 						if (connection != null) {
-							commandLT = new CommandListenerThread(connection);
+							commandLT.setConnection(connection);
 							commandLT.start();
+							//ThreadOfCommand();
 							connection.sendNickHello(nickField.getText());
 							forConnect();
 						}
@@ -239,6 +241,7 @@ public class MainForm<JForm> {
 						model.addMessage(nickField.getText(), new Date(), messageArea.getText());
 						textArea.update(model, new Object());
 						messageArea.setText("");
+						messageArea.setCursor(new Cursor(0));
 					} catch (UnsupportedEncodingException e1) {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
@@ -281,7 +284,7 @@ public class MainForm<JForm> {
 					callLT.start();
 					commandLT = new CommandListenerThread();
 					ThreadOfCall();
-					// ThreadOfCommand();
+					ThreadOfCommand();
 					nickApplyButton.setEnabled(false);
 				} catch (IOException e1) {
 					e1.printStackTrace();
@@ -333,7 +336,6 @@ public class MainForm<JForm> {
 								remoteAddrField.setText(callLT.getRemoteAddress().toString());
 								remoteLogiField.setText(command.toString());
 								forConnect();
-								ThreadOfCommand();
 								break;
 							} else {
 								b = true;
@@ -385,7 +387,8 @@ public class MainForm<JForm> {
 				if (lastCommand instanceof MessageCommand) {
 					model.addMessage(remoteLogiField.getText(), new Date(), commandLT.getLastCommand().toString());
 					textArea.update(model, new Object());
-				} else if (lastCommand instanceof NickCommand) {				
+				} else if (lastCommand instanceof NickCommand) {
+					remoteLogiField.setText(lastCommand.toString());
 				} else if (lastCommand != null) {
 					switch (lastCommand.type) {
 					case ACCEPT: {
