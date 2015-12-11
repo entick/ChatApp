@@ -1,10 +1,16 @@
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
@@ -20,7 +26,6 @@ public class Connection {
 
 	public Connection(Socket s, String nickname) throws IOException, SocketException {
 		this.socket = s;
-		this.s.setSoTimeout(30000);
 		outStream = new PrintStream(s.getOutputStream(),true, ENCODING);
 		inStream = new Scanner(s.getInputStream());
 		this.nickname = nickname;
@@ -58,10 +63,59 @@ public class Connection {
 		outStream.close();
 		socket.close();
 	}
+	
+	public void sendCommandFile(File file){
+		outStream.println("File "+file.getName()+" "+file.length());
+	}
+	public void sendFile(File file){
+		Runnable r = new Runnable() {
+			public void run() {
+				try {
+					Socket timeS = new Socket(socket.getInetAddress(),28411);
+					PrintStream ps = new PrintStream(timeS.getOutputStream(), true, "UTF-8");
+					System.out.println("Sending " + file.getName() + "...");
+					System.out.println("Start");
+					try {
+						byte[] byteArray = new byte[1024];
+						FileInputStream fis = new FileInputStream(file.getPath());
+						long s;
+						s = file.length();
+						ps.println(s);
+						int sp = (int) (s / 1024);
+						if (s % 1024 != 0)
+							sp++;
+						BufferedOutputStream bos = new BufferedOutputStream(timeS.getOutputStream());
+						Thread.sleep(500);
+						while (s > 0) {
+							int i = fis.read(byteArray);
+							bos.write(byteArray, 0, i);
+							s -= i;
+						}
+						bos.flush();
+						fis.close();
+					} catch (UnknownHostException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				} catch (FileNotFoundException e) {
+					System.err.println("File not found!");
+				} catch (IOException e) {
+					System.err.println("IOException");
+				} catch (Exception e) {
+
+				}
+			}
+		};
+		new Thread(r).start();
+	}
 
 
 	public Command receive() throws IOException {
 		String str;
+		try{
 		str=inStream.nextLine();
 		if (str.toUpperCase().startsWith("CHATAPP 2015 USER")) {
 			Scanner in = new Scanner(str);
@@ -75,6 +129,9 @@ public class Connection {
 			for (Command.CommandType cc : Command.CommandType.values())
 				if (cc.toString().equals(str))
 					return new Command(Command.CommandType.valueOf(str.replaceAll("ED", "")));
+		}
+		}catch(NoSuchElementException e){
+			System.out.println("recieve NoSuchElementException");
 		}
 		return new Command(Command.CommandType.NULL);
 	}

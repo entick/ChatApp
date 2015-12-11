@@ -56,7 +56,6 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.omg.CORBA.portable.UnknownException;
 
-
 import java.awt.Color;
 
 public class MainForm<JForm> {
@@ -84,6 +83,7 @@ public class MainForm<JForm> {
 	private ContactsView friends;
 	private LocalContactsView local;
 	private JList list, list1;
+	String login;
 
 	/**
 	 * Launch the application.
@@ -114,11 +114,11 @@ public class MainForm<JForm> {
 		frame = new JFrame();
 
 		frame.setBounds(100, 100, 850, 400);
-		frame.addWindowListener(new WindowListener(){
+		frame.addWindowListener(new WindowListener() {
 
 			public void windowActivated(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				
+
 			}
 
 			public void windowClosed(WindowEvent arg0) {
@@ -127,48 +127,47 @@ public class MainForm<JForm> {
 
 			public void windowClosing(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				int reply=JOptionPane.showConfirmDialog(null,
-						"Do you want to close programm", "",
+				int reply = JOptionPane.showConfirmDialog(null, "Do you want to close programm", "",
 						JOptionPane.YES_NO_OPTION);
-				if (reply==0){
-					try{
-					commandLT.stop();
-					callLT.stop();
-					server.goOffline();
-					}catch(NullPointerException e){
+				if (reply == 0) {
+					try {
+						commandLT.stop();
+						callLT.stop();
+						server.goOffline();
+					} catch (NullPointerException e) {
 						System.out.println("CLT");
 					}
-					if (connection!=null)
+					if (connection != null)
 						try {
 							connection.disconnect();
 						} catch (IOException e) {
-						// TODO Auto-generated catch block
+							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						System.exit(0);
+					System.exit(0);
 				}
 			}
 
 			public void windowDeactivated(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				
+
 			}
 
 			public void windowDeiconified(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				
+
 			}
 
 			public void windowIconified(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				
+
 			}
 
 			public void windowOpened(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				
+
 			}
-			
+
 		});
 		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
 		JPanel mainPanel = new JPanel();
@@ -265,13 +264,11 @@ public class MainForm<JForm> {
 		JLabel name = new JLabel("List of person on server");
 		name.setHorizontalAlignment(JLabel.CENTER);
 		contactsPanel.add(name);
-		
+
 		contactsPanel.setBorder(BorderFactory.createEtchedBorder());
 		JPanel forButton1 = new JPanel();
-		
-		frame.getContentPane().add(mainPanel);
-		
 
+		frame.getContentPane().add(mainPanel);
 
 		discButton.addActionListener(new ActionListener() {
 
@@ -289,7 +286,8 @@ public class MainForm<JForm> {
 									"Do you want to save this person to your contact list", "",
 									JOptionPane.YES_NO_OPTION);
 							if (reply == 0) {
-								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(), remoteAddrField.getText());
+								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
+										remoteAddrField.getText());
 								modelForCont.addLocalNick();
 								local.addElement(modelForCont.toString());
 								list1.setModel(local);
@@ -317,7 +315,7 @@ public class MainForm<JForm> {
 						if (connection != null) {
 							commandLT.setConnection(connection);
 							commandLT.start();
-							//ThreadOfCommand();
+							// ThreadOfCommand();
 							connection.sendNickHello(nickField.getText());
 							forConnect();
 						} else {
@@ -347,14 +345,14 @@ public class MainForm<JForm> {
 						model.addMessage(nickField.getText(), new Date(), messageArea.getText());
 						textArea.update(model, new Object());
 						messageArea.setText("");
-						
+
 					} catch (UnsupportedEncodingException e1) {
 						e1.printStackTrace();
 					} catch (IOException e1) {
 						e1.printStackTrace();
 					}
 
-				} 
+				}
 			}
 		});
 		send.addActionListener(new ActionListener() {
@@ -376,7 +374,6 @@ public class MainForm<JForm> {
 		});
 		nickApplyButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				String login;
 				if (nickField.getText().equals("")) {
 					login = "unnamed";
 				} else
@@ -395,62 +392,71 @@ public class MainForm<JForm> {
 				nickField.setText(login);
 				nickField.setEnabled(false);
 				try {
-					server = new ServerConnection(login);
-					server.connect();
-					server.goOnline();
 					callLT = new CallListenerThread();
 					callLT.start();
 					commandLT = new CommandListenerThread();
 					ThreadOfCall();
 					ThreadOfCommand();
+					connectButt.setEnabled(true);
 					nickApplyButton.setEnabled(false);
-					friends = new ContactsView(server);
-					list = new JList();
-					list.setModel(friends);
-					local = new LocalContactsView();
-					local.writeLocalNicks();
-					list1 = new JList();
-					list1.setModel(local);
-					JScrollPane scroll1 = new JScrollPane(list);
-					scroll1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-					JScrollPane scroll2 = new JScrollPane(list1);
-					scroll2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-					contactsPanel.add(scroll1);
-					contactsPanel.add(scroll2);
-					frame.validate();
-					list.addListSelectionListener(new ListSelectionListener() {
-						public void valueChanged(ListSelectionEvent e) {
-							if (connection == null) {
-								String[] str = list.getSelectedValue().toString().split(" ");
-								remoteLogiField.setText(str[0]);
-								remoteAddrField.setText(server.getIpForNick(str[0]));
-							} else {
-								JOptionPane.showMessageDialog(null, "You must disconnect to choose");
+					callLT.setLocalNick(login);
+					Runnable r = new Runnable() {
+						public void run() {
+							server = new ServerConnection(login);
+							server.connect();
+							server.goOnline();
+							try {
+								friends = new ContactsView(server);
+								list = new JList();
+								list.setModel(friends);
+								local = new LocalContactsView();
+								local.writeLocalNicks();
+								list1 = new JList();
+								list1.setModel(local);
+								JScrollPane scroll1 = new JScrollPane(list);
+								scroll1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+								JScrollPane scroll2 = new JScrollPane(list1);
+								scroll2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+								contactsPanel.add(scroll1);
+								contactsPanel.add(scroll2);
+								frame.validate();
+								list.addListSelectionListener(new ListSelectionListener() {
+									public void valueChanged(ListSelectionEvent e) {
+										if (connection == null) {
+											String[] str = list.getSelectedValue().toString().split(" ");
+											remoteLogiField.setText(str[0]);
+											remoteAddrField.setText(server.getIpForNick(str[0]));
+										} else {
+											JOptionPane.showMessageDialog(null, "You must disconnect to choose");
+										}
+									}
+								});
+								list1.addListSelectionListener(new ListSelectionListener() {
+									public void valueChanged(ListSelectionEvent e) {
+										if (connection == null) {
+											String[] str = list1.getSelectedValue().toString().split("\\|");
+											remoteLogiField.setText(str[0]);
+											remoteAddrField.setText(str[1]);
+										} else {
+											JOptionPane.showMessageDialog(null, "You must disconnect to choose");
+										}
+									}
+
+								});
+							} catch (IOException e1) {
+								System.out.println("Server connection error");
 							}
 						}
-					});
-					list1.addListSelectionListener(new ListSelectionListener() {
-						public void valueChanged(ListSelectionEvent e) {
-							if (connection == null) {
-								String[] str = list1.getSelectedValue().toString().split("\\|");
-								remoteLogiField.setText(str[0]);
-								remoteAddrField.setText(str[1]);
-							} else {
-								JOptionPane.showMessageDialog(null, "You must disconnect to choose");
-							}
-						}
-						
-					});
-					
-				connectButt.setEnabled(true);}catch (BindException e2){
-					JOptionPane.showMessageDialog(null,"You can't open two examples of one program");
+					};
+					new Thread(r).start();
+				} catch (BindException e2) {
+					JOptionPane.showMessageDialog(null, "You can't open two examples of one program");
 					System.exit(0);
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
-				
-				callLT.setLocalNick(login);
 			}
+
 		});
 	}
 
@@ -534,14 +540,15 @@ public class MainForm<JForm> {
 				} else if (lastCommand != null) {
 					switch (lastCommand.type) {
 					case ACCEPT: {
-						model.addMessage(remoteLogiField.getText(), new Date(),"User was accepted");
+						model.addMessage(remoteLogiField.getText(), new Date(), "User was accepted");
 						textArea.update(model, new Object());
 						if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
 							int reply = JOptionPane.showConfirmDialog(null,
 									"Do you want to save this person to your contact list", "",
 									JOptionPane.YES_NO_OPTION);
 							if (reply == 0) {
-								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(), remoteAddrField.getText());
+								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
+										remoteAddrField.getText());
 								try {
 									modelForCont.addLocalNick();
 								} catch (IOException e) {
@@ -556,7 +563,7 @@ public class MainForm<JForm> {
 						break;
 					}
 					case REJECT: {
-						model.addMessage(remoteLogiField.getText(), new Date(),"User was rejected");
+						model.addMessage(remoteLogiField.getText(), new Date(), "User was rejected");
 						textArea.update(model, new Object());
 						commandLT.stop();
 						forDisconnect();
