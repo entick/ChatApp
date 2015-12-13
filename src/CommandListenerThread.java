@@ -50,11 +50,11 @@ public class CommandListenerThread extends Observable implements Runnable {
 					case REJECT:
 						disconnected = true;
 						break;
-					default: {
-						connection.reject();
-						disconnected = true;
-						break;
-					}
+//					default: {
+//						connection.reject();
+//						disconnected = true;
+//						break;
+//					}
 					}
 				this.setChanged();
 				this.notifyObservers();

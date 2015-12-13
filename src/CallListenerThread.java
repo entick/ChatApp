@@ -1,5 +1,6 @@
 
 import java.io.IOException;
+import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.Observable;
 import java.util.concurrent.TimeUnit;
@@ -8,6 +9,8 @@ public class CallListenerThread extends Observable implements Runnable {
 	private CallListener callListener;
 	private Caller.CallStatus callStatus;
 	private Connection connection;
+	private Socket fileSocket;
+	private boolean isFile;
 	private volatile boolean isOpen;
 	// TODO: Add lastEvent;
 
@@ -42,7 +45,18 @@ public class CallListenerThread extends Observable implements Runnable {
 	public Connection getConnection() {
 		return connection;
 	}
-
+	
+	public Socket getSocket(){
+		return fileSocket;
+	}
+	
+	public void setIsFile(boolean isFIle){
+		this.isFile=isFile;
+	}
+	
+	public boolean isFile(){
+		return this.isFile;
+	}
 
 	public boolean isBusy() {
 		return callListener.isBusy();
@@ -52,7 +66,12 @@ public class CallListenerThread extends Observable implements Runnable {
 	public void run() {
 		while (true) {
 			try {
-				connection = callListener.getConnection();
+				if (isFile){
+					fileSocket=callListener.getSocet();
+					isFile=false;
+				}
+				else
+					connection = callListener.getConnection();
 				if (connection == null) {
 					callStatus = Caller.CallStatus.valueOf("BUSY");
 				} else {
@@ -78,6 +97,7 @@ public class CallListenerThread extends Observable implements Runnable {
 
 	public void start() {
 		this.isOpen = true;
+		this.isFile = false;
 		Thread t = new Thread(this);
 		t.start();
 	};

@@ -33,6 +33,16 @@ public class CallListener {
 		socket = sSocket.accept();
 		return new Connection(socket, localNick);
 	}
+	
+	public Socket getSocet(){
+		try {
+			return sSocket.accept();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
 
 	public SocketAddress getListenAddress() throws IOException {
 		return sSocket.getLocalSocketAddress();

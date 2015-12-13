@@ -19,6 +19,9 @@ import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -30,6 +33,7 @@ import java.rmi.UnexpectedException;
 import java.util.Date;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.GroupLayout;
@@ -69,6 +73,7 @@ public class MainForm<JForm> {
 	private HistoryView textArea;
 	private JTextArea messageArea;
 	private JButton send;
+	private JButton sendFile;
 	private JButton discButton;
 	private CallListener callListener;
 	private JButton connectButt;
@@ -83,8 +88,9 @@ public class MainForm<JForm> {
 	private ContactsView friends;
 	private LocalContactsView local;
 	private JList list, list1;
-	String login;
-
+	private String login;
+	private Socket fileSocket;
+	private String filename;
 	/**
 	 * Launch the application.
 	 * 
@@ -254,6 +260,12 @@ public class MainForm<JForm> {
 		send.setAlignmentX(Component.CENTER_ALIGNMENT);
 		send.setEnabled(false);
 		bot_panel.add(send);
+		sendFile = new JButton("SendFile");
+		sendFile.setMinimumSize(new Dimension(60,25));
+		sendFile.setMaximumSize(new Dimension(100,50));
+		sendFile.setAlignmentX(Component.CENTER_ALIGNMENT);
+		sendFile.setEnabled(false);
+		bot_panel.add(sendFile);
 
 		final JPanel contactsPanel = new JPanel();
 		frame.getContentPane().add(contactsPanel);
@@ -372,6 +384,16 @@ public class MainForm<JForm> {
 			}
 
 		});
+		sendFile.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent e){
+				JFileChooser fileopen = new JFileChooser();
+				int ret = fileopen.showDialog(null, "Открыть файл");                
+				if (ret == JFileChooser.APPROVE_OPTION) {
+				    File file = fileopen.getSelectedFile();
+				    connection.sendCommandFile(file);
+				}
+			}
+		});
 		nickApplyButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (nickField.getText().equals("")) {
@@ -464,65 +486,70 @@ public class MainForm<JForm> {
 		callLT.addObserver(new Observer() {
 			public void update(Observable arg0, Object arg1) {
 				// TODO:Thread, TimeOut;
-				System.out.println("update listener");
-				connection = callLT.getConnection();
-				try {
-					connection.sendNickHello(nickField.getText());
-				} catch (UnsupportedEncodingException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				commandLT.setConnection(connection);
-				commandLT.start();
-				System.out.println("CLT started");
-				long t1 = System.currentTimeMillis();
-				long t2 = System.currentTimeMillis();
-				boolean b = false;
-				while (((t2 - t1) <= 100000) && !b) {
-					Command command = commandLT.getLastCommand();
+				if (!callLT.isFile()) {
+					System.out.println("update listener");
+					connection = callLT.getConnection();
 					try {
-						System.out.println(command.getClass() + command.toString());
-					} catch (NullPointerException e) {
-						System.out.println("null");
+						connection.sendNickHello(nickField.getText());
+					} catch (UnsupportedEncodingException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
 					}
-					if (command instanceof NickCommand) {
-						int reply = JOptionPane.showConfirmDialog(null,
-								"Do you want to accept incoming connection from user ".concat(command.toString()), "",
-								JOptionPane.YES_NO_OPTION);
-						System.out.println(reply);
-
+					commandLT.setConnection(connection);
+					commandLT.start();
+					System.out.println("CLT started");
+					long t1 = System.currentTimeMillis();
+					long t2 = System.currentTimeMillis();
+					boolean b = false;
+					while (((t2 - t1) <= 100000) && !b) {
+						Command command = commandLT.getLastCommand();
 						try {
-							if (reply == 0) {
-								b = true;
-								connection.accept();
-								remoteAddrField.setText(callLT.getRemoteAddress().toString());
-								remoteLogiField.setText(command.toString());
-								forConnect();
-								break;
-							} else {
-								forDisconnect();
-								b = true;
-								connection.reject();
-								commandLT.stop();
-								connection = null;
-								break;
-							}
-
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+							System.out.println(command.getClass() + command.toString());
+						} catch (NullPointerException e) {
+							System.out.println("null");
 						}
-					} else {
-						t2 = System.currentTimeMillis();
-					}
-				}
-				System.out.println("Connection getted");
-			}
-		});
+						if (command instanceof NickCommand) {
+							int reply = JOptionPane.showConfirmDialog(null,
+									"Do you want to accept incoming connection from user ".concat(command.toString()),
+									"", JOptionPane.YES_NO_OPTION);
+							System.out.println(reply);
 
+							try {
+								if (reply == 0) {
+									b = true;
+									connection.accept();
+									remoteAddrField.setText(callLT.getRemoteAddress().toString());
+									remoteLogiField.setText(command.toString());
+									forConnect();
+									break;
+								} else {
+									forDisconnect();
+									b = true;
+									connection.reject();
+									commandLT.stop();
+									connection = null;
+									break;
+								}
+
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						} else {
+							t2 = System.currentTimeMillis();
+						}
+					}
+					System.out.println("Connection getted");
+				} else {
+					fileSocket=callLT.getSocket();
+					recieveFile();
+				}
+			}
+
+		});
 	}
 
 	public void ThreadOfCommand() {
@@ -537,6 +564,26 @@ public class MainForm<JForm> {
 					textArea.update(model, new Object());
 				} else if (lastCommand instanceof NickCommand) {
 					remoteLogiField.setText(lastCommand.toString());
+				} else if (lastCommand instanceof FileCommand) {
+					int reply = JOptionPane.showConfirmDialog(null,
+							"Do you want to save file " + lastCommand.toString() + "?", "", JOptionPane.YES_NO_OPTION);
+					if (reply == 0) {
+						try {
+							callLT.setIsFile(true);
+							filename=((FileCommand) lastCommand).getFileName();
+							connection.applyFile();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					} else {
+						try {
+							connection.rejectFile();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
 				} else if (lastCommand != null) {
 					switch (lastCommand.type) {
 					case ACCEPT: {
@@ -575,9 +622,10 @@ public class MainForm<JForm> {
 						commandLT.stop();
 						forDisconnect();
 						break;
+					}case APPLYFILE:{
+						connection.sendFile();
 					}
 					}
-
 				}
 
 			}
@@ -597,6 +645,7 @@ public class MainForm<JForm> {
 
 	void forConnect() throws IOException {
 		send.setEnabled(true);
+		sendFile.setEnabled(true);
 		connectButt.setEnabled(false);
 		messageArea.setEnabled(true);
 		discButton.setEnabled(true);
@@ -731,4 +780,35 @@ public class MainForm<JForm> {
 		f.setContentPane(cp);
 	}
 
+	private void recieveFile() {
+		Runnable r = new Runnable() {
+			public void run() {
+				try {
+					long s;
+					Scanner in = new Scanner(fileSocket.getInputStream(), "UTF-8");
+					s = Long.parseLong(in.nextLine());
+					System.out.println("File size: " + s);
+					byte[] byteArray = new byte[1024];
+					new File("Recieved").mkdir();
+					File f = new File("./Recieved/" + filename);
+					f.createNewFile();
+					FileOutputStream fos = new FileOutputStream(f);
+					int sp = (int) (s / 1024);
+					if (s % 1024 != 0)
+						sp++;
+					BufferedInputStream bis = new BufferedInputStream(fileSocket.getInputStream());
+					while (s > 0) {
+						int i = bis.read(byteArray);
+						fos.write(byteArray, 0, i);
+						s -= i;
+					}
+					fos.close();
+				} catch (IOException e) {
+					System.err.println("Recieve IO Error");
+				}
+				new JOptionPane().showMessageDialog(null, "Recieved " + filename);
+			}
+		};
+		new Thread(r).start();
+	}
 }

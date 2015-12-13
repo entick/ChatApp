@@ -15,7 +15,11 @@ public class Command {
 			public String toString() {
 				return "REJECTED";
 			}
-		}, NULL
+		}, NULL, FILE{
+			public String toString(){
+				return "FILE";
+			}
+		}, APPLYFILE,REJECTFILE
 	}
 
 	public Command(CommandType type) {

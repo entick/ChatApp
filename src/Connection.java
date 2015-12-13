@@ -23,6 +23,7 @@ public class Connection {
 	private PrintStream outStream;
 	private Scanner inStream;
 	private String nickname;
+	private File file;
 
 	public Connection(Socket s, String nickname) throws IOException, SocketException {
 		this.socket = s;
@@ -50,7 +51,6 @@ public class Connection {
 
 	public void reject() throws IOException {
 		outStream.println("Rejected");
-		outStream.close();
 	}
 
 	public void sendMessage(final String message) throws UnsupportedEncodingException, IOException {
@@ -64,10 +64,19 @@ public class Connection {
 		socket.close();
 	}
 	
+	public void applyFile() throws IOException{
+		outStream.println("ApplyFile");
+	}
+	
+	public void rejectFile() throws IOException{
+		outStream.println("RegectFile");
+	}
+	
 	public void sendCommandFile(File file){
+		this.file=file;
 		outStream.println("File "+file.getName()+" "+file.length());
 	}
-	public void sendFile(File file){
+	public void sendFile(){
 		Runnable r = new Runnable() {
 			public void run() {
 				try {
@@ -93,6 +102,7 @@ public class Connection {
 						}
 						bos.flush();
 						fis.close();
+						file=null;
 					} catch (UnknownHostException e1) {
 						// TODO Auto-generated catch block
 						e1.printStackTrace();
@@ -121,9 +131,16 @@ public class Connection {
 			Scanner in = new Scanner(str);
 			in.next();
 			return new NickCommand(in.next(), in.skip(" [a-z,A-Z]{4} ").nextLine().replaceAll(" BUSY",""), str.toUpperCase().endsWith(" BUSY"));
+		} else if (str.toUpperCase().equals("APPLYFILE")){
+			return new Command(Command.CommandType.APPLYFILE);
+		} else if (str.toUpperCase().equals("REJECTFILE")){
+			return new Command(Command.CommandType.REJECTFILE);
 		} else if (str.toUpperCase().equals("MESSAGE")) {
 				str=inStream.nextLine();
 			return new MessageCommand(str);
+		} else if (str.toUpperCase().startsWith("FILE")){
+			str.replaceFirst("FILE ", "");
+			return new FileCommand(str);
 		} else {
 			str = str.toUpperCase().replaceAll("[\r\n]","");
 			for (Command.CommandType cc : Command.CommandType.values())
