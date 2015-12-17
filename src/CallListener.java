@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -17,7 +16,7 @@ public class CallListener {
 	public CallListener(String localNick, String localIp) throws IOException {
 		this.localNick = localNick;
 		this.localIp = localIp;
-		this.sSocket = new ServerSocket(28420);
+		this.sSocket = new ServerSocket(Connection.PORT);
 		this.isBusy=false;
 	}
 
@@ -28,7 +27,7 @@ public class CallListener {
 	public CallListener() throws IOException {
 		this.localNick = "NickName";
 		this.localIp = "127.0.0.1";
-		this.sSocket = new ServerSocket(28411);
+		this.sSocket = new ServerSocket(Connection.PORT);
 		this.isBusy=false;
 	}
 

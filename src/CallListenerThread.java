@@ -1,9 +1,7 @@
 
 import java.io.IOException;
-import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.Observable;
-import java.util.concurrent.TimeUnit;
 
 public class CallListenerThread extends Observable implements Runnable {
 	private CallListener callListener;

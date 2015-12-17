@@ -4,21 +4,17 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
+
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
@@ -30,7 +26,7 @@ public class Connection {
 	private Socket socket;
 	private Socket voiceSocket;
 	private Socket fileSocket;
-	public static final int PORT = 28420;
+	public static final int PORT = 28411;
 	public static final String ENCODING = "UTF-8";
 	public static final char EOL = '\n';
 	private PrintStream outStream;
@@ -51,7 +47,7 @@ public class Connection {
 		this.fileSocket=fileSocket;
 		this.voiceSocket=voiceSocket;
 		outStream = new PrintStream(this.socket.getOutputStream(), true, ENCODING);
-		inStream = new Scanner(this.socket.getInputStream());
+		inStream = new Scanner(this.socket.getInputStream(),"UTF-8");
 		inSFile = new Scanner(this.fileSocket.getInputStream(),"UTF-8");
 		inFile = new BufferedInputStream(this.fileSocket.getInputStream());
 		outFile = new BufferedOutputStream(this.fileSocket.getOutputStream());

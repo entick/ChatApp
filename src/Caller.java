@@ -1,10 +1,8 @@
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.util.concurrent.TimeUnit;
 
 public class Caller {
 	private String localNick;

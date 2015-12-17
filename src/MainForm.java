@@ -4,12 +4,9 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
-import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
-import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -24,8 +21,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -73,9 +68,6 @@ public class MainForm<JForm> {
 	private CallListenerThread callLT;
 	private HistoryModel model;
 	private CommandListenerThread commandLT;
-	private int isPressed;
-	private boolean forAccept;
-	private boolean area;
 	public volatile static boolean micro;
 	public volatile static boolean voice;
 	private ServerConnection server;
@@ -86,7 +78,6 @@ public class MainForm<JForm> {
 	private Socket fileSocket;
 	private String filename;
 	private KeyAdapter keyAdapterForQ;
-	private Socket voiceSocket;
 	public static TargetDataLine microphoneLine;
 
 	public static final AudioFormat FORMAT = new AudioFormat(44100, 16, 2, true, true);
@@ -141,24 +132,6 @@ public class MainForm<JForm> {
 	public MainForm() throws IOException {
 		frame = new JFrame();
 		frame.setBounds(100, 100, 850, 400);
-		area = true;
-		keyAdapterForQ = new KeyAdapter() {
-			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_Q)
-					area = true;
-			}
-
-			public void keyTyped(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_Q)
-					area = true;
-			}
-
-			public void keyReleased(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_Q) {
-					area = false;
-				}
-			}
-		};
 		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
 		manager.addKeyEventDispatcher(new MyDispatcher());
 		initMicro();
@@ -477,6 +450,9 @@ public class MainForm<JForm> {
 								JScrollPane scroll2 = new JScrollPane(list1);
 								scroll2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
 								contactsPanel.add(scroll1);
+								JLabel name = new JLabel("List of local contacts");
+								name.setHorizontalAlignment(JLabel.CENTER);
+								contactsPanel.add(name);
 								contactsPanel.add(scroll2);
 								frame.validate();
 								list.addListSelectionListener(new ListSelectionListener() {
@@ -622,27 +598,24 @@ public class MainForm<JForm> {
 					case ACCEPT: {
 						model.addMessage(remoteLogiField.getText(), new Date(), "User was accepted");
 						textArea.update(model, new Object());
-						// if (!local.findNick(remoteLogiField.getText(),
-						// remoteAddrField.getText())) {
-						// int reply = JOptionPane.showConfirmDialog(null,
-						// "Do you want to save this person to your contact
-						// list", "",
-						// JOptionPane.YES_NO_OPTION);
-						// if (reply == 0) {
-						// ContactsModel modelForCont = new
-						// ContactsModel(remoteLogiField.getText(),
-						// remoteAddrField.getText());
-						// try {
-						// modelForCont.addLocalNick();
-						// } catch (IOException e) {
-						// // TODO Auto-generated catch block
-						// e.printStackTrace();
-						// }
-						// local.addElement(modelForCont.toString());
-						// list1.setModel(local);
-						// frame.validate();
-						// }
-						// }
+						if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
+							int reply = JOptionPane.showConfirmDialog(null,
+									"Do you want to save this person to your contactlist", "",
+									JOptionPane.YES_NO_OPTION);
+							if (reply == 0) {
+								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
+										remoteAddrField.getText());
+								try {
+									modelForCont.addLocalNick();
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+								local.addElement(modelForCont.toString());
+								list1.setModel(local);
+								frame.validate();
+							}
+						}
 						break;
 					}
 					case REJECT: {
