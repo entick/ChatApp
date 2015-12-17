@@ -19,9 +19,9 @@ public class Command {
 			public String toString(){
 				return "FILE";
 			}
-		}, APPLYFILE,REJECTFILE
+		}, APPLYFILE,REJECTFILE,SPEAKSTART,SPEAKSTOP
 	}
-
+	
 	public Command(CommandType type) {
 		this.type = type;
 	}

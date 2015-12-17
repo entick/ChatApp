@@ -1,7 +1,10 @@
 import java.io.IOException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.util.Scanner;
 
 public class CallListener {
 	private String localNick;
@@ -9,11 +12,12 @@ public class CallListener {
 	private ServerSocket sSocket;
 	private Socket socket;
 	private boolean isBusy;
+	private int key;
 
 	public CallListener(String localNick, String localIp) throws IOException {
 		this.localNick = localNick;
 		this.localIp = localIp;
-		this.sSocket = new ServerSocket(Connection.PORT);
+		this.sSocket = new ServerSocket(28420);
 		this.isBusy=false;
 	}
 
@@ -24,17 +28,39 @@ public class CallListener {
 	public CallListener() throws IOException {
 		this.localNick = "NickName";
 		this.localIp = "127.0.0.1";
-		this.sSocket = new ServerSocket(Connection.PORT);
+		this.sSocket = new ServerSocket(28420);
 		this.isBusy=false;
 	}
 
 	// TODO: make function
 	public Connection getConnection() throws IOException {
 		socket = sSocket.accept();
-		return new Connection(socket, localNick);
+		Scanner in = new Scanner(socket.getInputStream());
+		key=in.nextInt();
+		System.out.println(key);
+		Socket files = sSocket.accept();
+		in = new Scanner(files.getInputStream());
+		PrintStream pw;
+		while (in.nextInt()!=key){
+			pw = new PrintStream(files.getOutputStream(),true, "UTF-8");
+			pw.println("ChatApp 2015 user " + localNick + " busy");
+			files=sSocket.accept();
+			in = new Scanner(socket.getInputStream());
+		};
+		System.out.println("files getted");
+		Socket voice = sSocket.accept();
+		in = new Scanner(voice.getInputStream());
+		while(in.nextInt()!=key){
+			pw = new PrintStream(voice.getOutputStream(),true, "UTF-8");
+			pw.println("ChatApp 2015 user " + localNick + " busy");
+			voice = sSocket.accept();
+			in = new Scanner(socket.getInputStream());
+		}
+		System.out.println("voice getted");
+		return new Connection(socket,files,voice, localNick);
 	}
 	
-	public Socket getSocet(){
+	public Socket getSocket(){
 		try {
 			return sSocket.accept();
 		} catch (IOException e) {
@@ -74,7 +100,4 @@ public class CallListener {
 		return "CallListener [localNick=" + localNick + ", localIp=" + localIp + ", sSocket=" + sSocket + "]";
 	}
 
-	public static void main(String[] args) {
-
-	}
 }

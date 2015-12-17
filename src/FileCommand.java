@@ -11,6 +11,11 @@ public class FileCommand extends Command {
 	}
 	public String getFileName(){
 		Scanner in = new Scanner(file);
-		return in.next();
+		StringBuffer sb = new StringBuffer();
+		String str;
+		while (!(str=in.next()).toUpperCase().equals("SIZE")){
+			sb.append(str);
+		}
+		return sb.toString();
 	}
 }

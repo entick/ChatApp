@@ -9,15 +9,12 @@ public class CallListenerThread extends Observable implements Runnable {
 	private CallListener callListener;
 	private Caller.CallStatus callStatus;
 	private Connection connection;
-	private Socket fileSocket;
-	private boolean isFile;
-	private volatile boolean isOpen;
 	// TODO: Add lastEvent;
 
 	public CallListenerThread() throws IOException {
 		callListener = new CallListener();
 	}
-	
+
 	public CallListenerThread(String localNick) throws IOException {
 		callListener = new CallListener(localNick);
 	}
@@ -45,43 +42,20 @@ public class CallListenerThread extends Observable implements Runnable {
 	public Connection getConnection() {
 		return connection;
 	}
-	
-	public Socket getSocket(){
-		return fileSocket;
-	}
-	
-	public void setIsFile(boolean isFIle){
-		this.isFile=isFile;
-	}
-	
-	public boolean isFile(){
-		return this.isFile;
-	}
 
 	public boolean isBusy() {
 		return callListener.isBusy();
 	}
-
 	@Override
 	public void run() {
 		while (true) {
-			try {
-				if (isFile){
-					fileSocket=callListener.getSocet();
-					isFile=false;
+				try {
+						connection = callListener.getConnection();
+				} catch (IOException e) {
+					System.out.println("SmthWrong");
 				}
-				else
-					connection = callListener.getConnection();
-				if (connection == null) {
-					callStatus = Caller.CallStatus.valueOf("BUSY");
-				} else {
-					callStatus = Caller.CallStatus.valueOf("OK");
-				}
-			} catch (IOException e) {
-				System.out.println("SmthWrong");
-			}
-			setChanged();
-			notifyObservers();
+				setChanged();
+				notifyObservers();
 		}
 
 	}
@@ -90,20 +64,13 @@ public class CallListenerThread extends Observable implements Runnable {
 		callListener.setBusy(busy);
 	}
 
-
 	public void setLocalNick(String localNick) {
 		callListener.setLocalNick(localNick);
 	}
 
 	public void start() {
-		this.isOpen = true;
-		this.isFile = false;
 		Thread t = new Thread(this);
 		t.start();
 	};
-
-	public void stop() {
-		this.isOpen = false;
-	}
 
 }

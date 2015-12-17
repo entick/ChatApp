@@ -1,45 +1,42 @@
 import java.awt.EventQueue;
-import java.awt.Font;
-import java.awt.Graphics;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.Mixer;
+import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.TargetDataLine;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JTextField;
 import java.awt.GridLayout;
-import java.awt.List;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.BindException;
-import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.rmi.UnexpectedException;
 import java.util.Date;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Scanner;
-import java.util.concurrent.TimeUnit;
 
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import java.awt.BorderLayout;
-import javax.swing.JFormattedTextField;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.SwingConstants;
@@ -50,15 +47,9 @@ import javax.swing.JTextArea;
 import java.awt.Dimension;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Cursor;
-
-import javax.swing.border.BevelBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-import javax.swing.filechooser.FileNameExtensionFilter;
-
-import org.omg.CORBA.portable.UnknownException;
 
 import java.awt.Color;
 
@@ -84,6 +75,9 @@ public class MainForm<JForm> {
 	private CommandListenerThread commandLT;
 	private int isPressed;
 	private boolean forAccept;
+	private boolean area;
+	public volatile static boolean micro;
+	public volatile static boolean voice;
 	private ServerConnection server;
 	private ContactsView friends;
 	private LocalContactsView local;
@@ -91,12 +85,39 @@ public class MainForm<JForm> {
 	private String login;
 	private Socket fileSocket;
 	private String filename;
+	private KeyAdapter keyAdapterForQ;
+	private Socket voiceSocket;
+	public static TargetDataLine microphoneLine;
+
+	public static final AudioFormat FORMAT = new AudioFormat(44100, 16, 2, true, true);
+
 	/**
 	 * Launch the application.
 	 * 
 	 * @throws IOException
 	 * @throws ClassNotFoundException
 	 */
+	private class MyDispatcher implements KeyEventDispatcher {
+		public boolean dispatchKeyEvent(KeyEvent e) {
+			if (connection != null) {
+				if ((!nickField.isFocusOwner()) && (!messageArea.isFocusOwner()) && (!remoteAddrField.isFocusOwner())) {
+					if (e.getID() == KeyEvent.KEY_PRESSED) {
+						if (e.getKeyCode() == KeyEvent.VK_Q) {
+							connection.sendSpeakCommand();
+							micro = true;
+						}
+					} else if (e.getID() == KeyEvent.KEY_RELEASED) {
+						if (e.getKeyCode() == KeyEvent.VK_Q) {
+							micro = false;
+							connection.sendSpeakStopCommand();
+						}
+					}
+				}
+			}
+			return false;
+		}
+	}
+
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
 		Class.forName("com.mysql.jdbc.Driver");
 		EventQueue.invokeLater(new Runnable() {
@@ -118,8 +139,28 @@ public class MainForm<JForm> {
 	 */
 	public MainForm() throws IOException {
 		frame = new JFrame();
-
 		frame.setBounds(100, 100, 850, 400);
+		area = true;
+		keyAdapterForQ = new KeyAdapter() {
+			public void keyPressed(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_Q)
+					area = true;
+			}
+
+			public void keyTyped(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_Q)
+					area = true;
+			}
+
+			public void keyReleased(KeyEvent e) {
+				if (e.getKeyCode() == KeyEvent.VK_Q) {
+					area = false;
+				}
+			}
+		};
+		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+		manager.addKeyEventDispatcher(new MyDispatcher());
+		initMicro();
 		frame.addWindowListener(new WindowListener() {
 
 			public void windowActivated(WindowEvent arg0) {
@@ -133,25 +174,20 @@ public class MainForm<JForm> {
 
 			public void windowClosing(WindowEvent arg0) {
 				// TODO Auto-generated method stub
-				int reply = JOptionPane.showConfirmDialog(null, "Do you want to close programm", "",
-						JOptionPane.YES_NO_OPTION);
-				if (reply == 0) {
-					try {
-						commandLT.stop();
-						callLT.stop();
-						server.goOffline();
-					} catch (NullPointerException e) {
-						System.out.println("CLT");
-					}
-					if (connection != null)
-						try {
-							connection.disconnect();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					System.exit(0);
+				try {
+					commandLT.stop();
+					server.goOffline();
+				} catch (NullPointerException e) {
+					System.out.println("CLT");
 				}
+				if (connection != null)
+					try {
+						connection.disconnect();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+				System.exit(0);
 			}
 
 			public void windowDeactivated(WindowEvent arg0) {
@@ -185,13 +221,13 @@ public class MainForm<JForm> {
 		JPanel panel_nick = new JPanel();
 		panel_nick.setLayout(new BoxLayout(panel_nick, BoxLayout.X_AXIS));
 		panel_login.add(panel_nick);
-
 		JLabel loginLabel = new JLabel("local login");
 		panel_nick.add(loginLabel);
 
 		nickField = new JTextField();
 		nickField.setMaximumSize(new Dimension(150, 20));
 		nickField.setToolTipText("You must write your nick for applying");
+		nickField.addKeyListener(keyAdapterForQ);
 		panel_nick.add(nickField);
 		nickField.setColumns(10);
 		JPanel panel_connection = new JPanel();
@@ -227,6 +263,7 @@ public class MainForm<JForm> {
 		panel_connection.add(remoteAddrField);
 		remoteAddrField.setColumns(10);
 		remoteAddrField.setToolTipText("You must press Enter to continue");
+		remoteAddrField.addKeyListener(keyAdapterForQ);
 		connectButt = new JButton("Connect");
 		connectButt.setAlignmentX(Component.CENTER_ALIGNMENT);
 		panel_connection.add(connectButt);
@@ -253,7 +290,7 @@ public class MainForm<JForm> {
 		messageArea.setLineWrap(true);
 		messageArea.setEnabled(false);
 		bot_panel.add(messageArea);
-
+		messageArea.addKeyListener(keyAdapterForQ);
 		send = new JButton("Send");
 		send.setMinimumSize(new Dimension(60, 25));
 		send.setMaximumSize(new Dimension(100, 50));
@@ -261,8 +298,8 @@ public class MainForm<JForm> {
 		send.setEnabled(false);
 		bot_panel.add(send);
 		sendFile = new JButton("SendFile");
-		sendFile.setMinimumSize(new Dimension(60,25));
-		sendFile.setMaximumSize(new Dimension(100,50));
+		sendFile.setMinimumSize(new Dimension(60, 25));
+		sendFile.setMaximumSize(new Dimension(100, 50));
 		sendFile.setAlignmentX(Component.CENTER_ALIGNMENT);
 		sendFile.setEnabled(false);
 		bot_panel.add(sendFile);
@@ -281,7 +318,6 @@ public class MainForm<JForm> {
 		JPanel forButton1 = new JPanel();
 
 		frame.getContentPane().add(mainPanel);
-
 		discButton.addActionListener(new ActionListener() {
 
 			public void actionPerformed(ActionEvent e) {
@@ -384,13 +420,13 @@ public class MainForm<JForm> {
 			}
 
 		});
-		sendFile.addActionListener(new ActionListener(){
-			public void actionPerformed(ActionEvent e){
+		sendFile.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
 				JFileChooser fileopen = new JFileChooser();
-				int ret = fileopen.showDialog(null, "Открыть файл");                
+				int ret = fileopen.showDialog(null, "Открыть файл");
 				if (ret == JFileChooser.APPROVE_OPTION) {
-				    File file = fileopen.getSelectedFile();
-				    connection.sendCommandFile(file);
+					File file = fileopen.getSelectedFile();
+					connection.sendCommandFile(file);
 				}
 			}
 		});
@@ -472,6 +508,7 @@ public class MainForm<JForm> {
 					};
 					new Thread(r).start();
 				} catch (BindException e2) {
+					e2.printStackTrace();
 					JOptionPane.showMessageDialog(null, "You can't open two examples of one program");
 					System.exit(0);
 				} catch (IOException e1) {
@@ -485,8 +522,7 @@ public class MainForm<JForm> {
 	public void ThreadOfCall() throws IOException {
 		callLT.addObserver(new Observer() {
 			public void update(Observable arg0, Object arg1) {
-				// TODO:Thread, TimeOut;
-				if (!callLT.isFile()) {
+				// TODO:Thread, TimeOut
 					System.out.println("update listener");
 					connection = callLT.getConnection();
 					try {
@@ -507,7 +543,6 @@ public class MainForm<JForm> {
 					while (((t2 - t1) <= 100000) && !b) {
 						Command command = commandLT.getLastCommand();
 						try {
-							System.out.println(command.getClass() + command.toString());
 						} catch (NullPointerException e) {
 							System.out.println("null");
 						}
@@ -541,14 +576,11 @@ public class MainForm<JForm> {
 						} else {
 							t2 = System.currentTimeMillis();
 						}
-					}
-					System.out.println("Connection getted");
-				} else {
-					fileSocket=callLT.getSocket();
-					recieveFile();
+					
 				}
+					System.out.println("Connection getted");
 			}
-
+			
 		});
 	}
 
@@ -558,7 +590,7 @@ public class MainForm<JForm> {
 			public void update(Observable arg0, Object arg1) {
 				System.out.println("testobs");
 				Command lastCommand = commandLT.getLastCommand();
-				System.out.println(lastCommand.getClass() + " " + lastCommand.toString());
+				System.out.println(lastCommand.getClass()+" "+lastCommand.toString());
 				if (lastCommand instanceof MessageCommand) {
 					model.addMessage(remoteLogiField.getText(), new Date(), commandLT.getLastCommand().toString());
 					textArea.update(model, new Object());
@@ -569,9 +601,9 @@ public class MainForm<JForm> {
 							"Do you want to save file " + lastCommand.toString() + "?", "", JOptionPane.YES_NO_OPTION);
 					if (reply == 0) {
 						try {
-							callLT.setIsFile(true);
-							filename=((FileCommand) lastCommand).getFileName();
+							filename = ((FileCommand) lastCommand).getFileName();
 							connection.applyFile();
+							connection.recieveFile(filename);
 						} catch (IOException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
@@ -589,24 +621,24 @@ public class MainForm<JForm> {
 					case ACCEPT: {
 						model.addMessage(remoteLogiField.getText(), new Date(), "User was accepted");
 						textArea.update(model, new Object());
-						if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
-							int reply = JOptionPane.showConfirmDialog(null,
-									"Do you want to save this person to your contact list", "",
-									JOptionPane.YES_NO_OPTION);
-							if (reply == 0) {
-								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
-										remoteAddrField.getText());
-								try {
-									modelForCont.addLocalNick();
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
-								}
-								local.addElement(modelForCont.toString());
-								list1.setModel(local);
-								frame.validate();
-							}
-						}
+//						if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
+//							int reply = JOptionPane.showConfirmDialog(null,
+//									"Do you want to save this person to your contact list", "",
+//									JOptionPane.YES_NO_OPTION);
+//							if (reply == 0) {
+//								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
+//										remoteAddrField.getText());
+//								try {
+//									modelForCont.addLocalNick();
+//								} catch (IOException e) {
+//									// TODO Auto-generated catch block
+//									e.printStackTrace();
+//								}
+//								local.addElement(modelForCont.toString());
+//								list1.setModel(local);
+//								frame.validate();
+//							}
+//						}
 						break;
 					}
 					case REJECT: {
@@ -622,8 +654,18 @@ public class MainForm<JForm> {
 						commandLT.stop();
 						forDisconnect();
 						break;
-					}case APPLYFILE:{
+					}
+					case APPLYFILE: {
 						connection.sendFile();
+						break;
+					}
+					case SPEAKSTART: {
+						connection.recieveVoice();
+						break;
+					}
+
+					case SPEAKSTOP: {
+						break;
 					}
 					}
 				}
@@ -810,5 +852,42 @@ public class MainForm<JForm> {
 			}
 		};
 		new Thread(r).start();
+	}
+
+	private void initMicro() {
+		DataLine.Info lineInfo = new DataLine.Info(TargetDataLine.class, MainForm.FORMAT);
+		Mixer.Info[] mixerInfos = AudioSystem.getMixerInfo();
+		System.out.println("----------------Mixers Available----------------");
+		for (int i = 0; i < mixerInfos.length; i++) {
+			try {
+				System.out.println(new String(mixerInfos[i].toString().getBytes("Windows-1252"), "Windows-1251"));
+			} catch (UnsupportedEncodingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		System.out.println("----------------------Mixers Supporting Line----------------------");
+		for (int i = 0; i < mixerInfos.length; i++) {
+			Mixer m = AudioSystem.getMixer(mixerInfos[i]);
+			if (m.isLineSupported(lineInfo)) {
+				try {
+					System.out.println(
+							i + " " + new String(mixerInfos[i].toString().getBytes("Windows-1252"), "Windows-1251"));
+				} catch (UnsupportedEncodingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+		try {
+			Mixer mixerS = AudioSystem.getMixer(mixerInfos[3]);
+			microphoneLine = (TargetDataLine) mixerS.getLine(lineInfo);
+			microphoneLine.open(MainForm.FORMAT);
+			microphoneLine.start();
+			// Thread captureThread = new Thread(new CaptureThread());
+			// captureThread.start();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }

@@ -39,7 +39,7 @@ public class CommandListenerThread extends Observable implements Runnable {
 			try {
 				lastCommand = connection.receive();
 				assert lastCommand == null;
-				if (lastCommand != null) 
+				if (lastCommand != null){
 					switch (lastCommand.type) {
 					case MESSAGE:
 					case NICK:
@@ -56,6 +56,7 @@ public class CommandListenerThread extends Observable implements Runnable {
 //						break;
 //					}
 					}
+				}
 				this.setChanged();
 				this.notifyObservers();
 

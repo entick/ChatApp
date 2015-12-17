@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -10,6 +11,7 @@ public class Caller {
 	private String ip;
 	private SocketAddress remoteAddress;
 	private String remoteNick;
+	private int key;
 	// private final static int REMOTE_PORT = 28411; nused
 
 	public static enum CallStatus {
@@ -42,7 +44,22 @@ public class Caller {
 		try {
 			Socket s = new Socket();
 			s.connect(remoteAddress, 1000);
-			return  new Connection(s, localNick);
+			key=(int)(10000*Math.random());
+			System.out.println(key);
+			PrintWriter pw = new PrintWriter(s.getOutputStream());
+			pw.println(key);
+			pw.flush();
+			Socket files= new Socket();
+			files.connect(remoteAddress, 1000);
+			pw = new PrintWriter(files.getOutputStream());
+			pw.println(key);
+			pw.flush();
+			Socket voice = new Socket();
+			voice.connect(remoteAddress, 1000);
+			pw = new PrintWriter(voice.getOutputStream());
+			pw.println(key);
+			pw.flush();
+			return  new Connection(s,files,voice, localNick);
 		} catch (IOException e) {
 			System.out.println("Not connected");
 			return null;
