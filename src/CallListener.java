@@ -28,7 +28,7 @@ public class CallListener {
 	public CallListener() throws IOException {
 		this.localNick = "NickName";
 		this.localIp = "127.0.0.1";
-		this.sSocket = new ServerSocket(28420);
+		this.sSocket = new ServerSocket(28411);
 		this.isBusy=false;
 	}
 

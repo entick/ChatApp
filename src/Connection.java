@@ -30,7 +30,7 @@ public class Connection {
 	private Socket socket;
 	private Socket voiceSocket;
 	private Socket fileSocket;
-	public static final int PORT = 28411;
+	public static final int PORT = 28420;
 	public static final String ENCODING = "UTF-8";
 	public static final char EOL = '\n';
 	private PrintStream outStream;
@@ -103,6 +103,7 @@ public class Connection {
 
 	public void sendCommandFile(File file) {
 		this.file = file;
+		long fileLength=file.length();
 		outStream.println("File " + file.getName() + " Size " + file.length());
 	}
 
@@ -162,6 +163,7 @@ public class Connection {
 				try {
 					while (MainForm.micro) {
 						int cnt = MainForm.microphoneLine.read(buffer, 0, buffer.length);
+						System.out.println(cnt);
 						if (cnt > 0) {
 							outVoice.write(buffer, 0, cnt);
 							outVoice.flush();
@@ -186,6 +188,7 @@ public class Connection {
 					line.start();
 					int count;
 					while (((count=inVoice.read(buffer,0,buffer.length))!=-1) && (!speakstop)){
+						System.out.print(count);
 						if (count>0){
 							line.write(buffer, 0, count);
 						}
