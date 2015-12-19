@@ -49,11 +49,12 @@ public class CallListenerThread extends Observable implements Runnable {
 		while (true) {
 				try {
 						connection = callListener.getConnection();
+						setChanged();
+						notifyObservers();
 				} catch (IOException e) {
 					System.out.println("SmthWrong");
 				}
-				setChanged();
-				notifyObservers();
+				
 		}
 
 	}

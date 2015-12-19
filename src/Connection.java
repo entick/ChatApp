@@ -14,7 +14,6 @@ import java.net.UnknownHostException;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
-
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
@@ -26,7 +25,7 @@ public class Connection {
 	private Socket socket;
 	private Socket voiceSocket;
 	private Socket fileSocket;
-	public static final int PORT = 28411;
+	public static final int PORT = 28420;
 	public static final String ENCODING = "UTF-8";
 	public static final char EOL = '\n';
 	private PrintStream outStream;
@@ -39,19 +38,18 @@ public class Connection {
 	private DataInputStream inVoice;
 	private DataOutputStream outVoice;
 	private File file;
-	private boolean speakstop;
 
-	public Connection(Socket s,Socket fileSocket, Socket voiceSocket, String nickname) throws IOException, SocketException {
+	public Connection(Socket s, Socket fileSocket, Socket voiceSocket, String nickname)
+			throws IOException, SocketException {
 		this.socket = s;
-		speakstop=false;
-		this.fileSocket=fileSocket;
-		this.voiceSocket=voiceSocket;
+		this.fileSocket = fileSocket;
+		this.voiceSocket = voiceSocket;
 		outStream = new PrintStream(this.socket.getOutputStream(), true, ENCODING);
-		inStream = new Scanner(this.socket.getInputStream(),"UTF-8");
-		inSFile = new Scanner(this.fileSocket.getInputStream(),"UTF-8");
+		inStream = new Scanner(this.socket.getInputStream(), "UTF-8");
+		inSFile = new Scanner(this.fileSocket.getInputStream(), "UTF-8");
 		inFile = new BufferedInputStream(this.fileSocket.getInputStream());
 		outFile = new BufferedOutputStream(this.fileSocket.getOutputStream());
-		outPSFile = new PrintStream(this.fileSocket.getOutputStream(),true,ENCODING);
+		outPSFile = new PrintStream(this.fileSocket.getOutputStream(), true, ENCODING);
 		inVoice = new DataInputStream(this.voiceSocket.getInputStream());
 		outVoice = new DataOutputStream(this.voiceSocket.getOutputStream());
 		this.nickname = nickname;
@@ -99,7 +97,7 @@ public class Connection {
 
 	public void sendCommandFile(File file) {
 		this.file = file;
-		long fileLength=file.length();
+		long fileLength = file.length();
 		outStream.println("File " + file.getName() + " Size " + file.length());
 	}
 
@@ -172,27 +170,26 @@ public class Connection {
 		};
 		new Thread(r).start();
 	}
-	
-	public void recieveVoice(){
-		Runnable r = new Runnable(){
+
+	public void recieveVoice() {
+		Runnable r = new Runnable() {
 			public void run() {
 				byte buffer[] = new byte[(int) MainForm.FORMAT.getSampleRate() * MainForm.FORMAT.getFrameSize()];
 				try {
-					DataLine.Info info=new DataLine.Info(SourceDataLine.class, MainForm.FORMAT);
-					SourceDataLine line = (SourceDataLine)AudioSystem.getLine(info);
+					DataLine.Info info = new DataLine.Info(SourceDataLine.class, MainForm.FORMAT);
+					SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
 					line.open(MainForm.FORMAT);
 					line.start();
 					int count;
-					while (((count=inVoice.read(buffer,0,buffer.length))!=-1) && (!speakstop)){
-						System.out.print(count);
-						if (count>0){
+					while (((count = inVoice.read(buffer, 0, buffer.length)) != -1)) {
+						System.out.println(count);
+						if (count > 0) {
 							line.write(buffer, 0, count);
 						}
 					}
 					line.drain();
 					line.close();
-					speakstop=false;
-				} catch (IOException | LineUnavailableException e) {
+				} catch (IOException | LineUnavailableException | IllegalArgumentException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -200,7 +197,7 @@ public class Connection {
 		};
 		new Thread(r).start();
 	}
-	
+
 	public void recieveFile(String filename) {
 		Runnable r = new Runnable() {
 			public void run() {
@@ -245,14 +242,13 @@ public class Connection {
 				return new Command(Command.CommandType.APPLYFILE);
 			} else if (str.toUpperCase().equals("REJECTFILE")) {
 				return new Command(Command.CommandType.REJECTFILE);
-			} else if(str.toUpperCase().equals("SPEAKSTOP")){
-				speakstop=true;
+			} else if (str.toUpperCase().equals("SPEAKSTOP")) {
 				return new Command(Command.CommandType.SPEAKSTOP);
 			} else if (str.toUpperCase().equals("MESSAGE")) {
 				str = inStream.nextLine();
 				return new MessageCommand(str);
 			} else if (str.toUpperCase().startsWith("FILE")) {
-				str=str.substring(5, str.length()-1);
+				str = str.substring(5, str.length() - 1);
 				return new FileCommand(str);
 			} else {
 				str = str.toUpperCase().replaceAll("[\r\n]", "");
@@ -263,7 +259,7 @@ public class Connection {
 		} catch (NoSuchElementException | IndexOutOfBoundsException e) {
 			System.out.println("recieve Exception");
 		}
-		return new Command(Command.CommandType.NULL);
+		return null;
 	}
 
 }

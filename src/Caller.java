@@ -41,19 +41,19 @@ public class Caller {
 		String ip = remoteAddress.toString(); // "/ip:port"
 		try {
 			Socket s = new Socket();
-			s.connect(remoteAddress, 1000);
+			s.connect(remoteAddress, 30000);
 			key=(int)(10000*Math.random());
 			System.out.println(key);
 			PrintWriter pw = new PrintWriter(s.getOutputStream());
 			pw.println(key);
 			pw.flush();
 			Socket files= new Socket();
-			files.connect(remoteAddress, 1000);
+			files.connect(remoteAddress, 100);
 			pw = new PrintWriter(files.getOutputStream());
 			pw.println(key);
 			pw.flush();
 			Socket voice = new Socket();
-			voice.connect(remoteAddress, 1000);
+			voice.connect(remoteAddress, 100);
 			pw = new PrintWriter(voice.getOutputStream());
 			pw.println(key);
 			pw.flush();

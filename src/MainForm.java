@@ -77,7 +77,7 @@ public class MainForm<JForm> {
 	private String login;
 	private Socket fileSocket;
 	private String filename;
-	private KeyAdapter keyAdapterForQ;
+	private boolean isConnected;
 	public static TargetDataLine microphoneLine;
 
 	public static final AudioFormat FORMAT = new AudioFormat(44100, 16, 2, true, true);
@@ -94,14 +94,16 @@ public class MainForm<JForm> {
 				if ((!nickField.isFocusOwner()) && (!messageArea.isFocusOwner()) && (!remoteAddrField.isFocusOwner())) {
 					if (e.getID() == KeyEvent.KEY_PRESSED) {
 						if (e.getKeyCode() == KeyEvent.VK_Q) {
-							if (!micro)
+							if (!micro) {
 								connection.sendSpeakCommand();
+								System.out.println("sendSpeakCommand");
+							}
 							micro = true;
 						}
 					} else if (e.getID() == KeyEvent.KEY_RELEASED) {
 						if (e.getKeyCode() == KeyEvent.VK_Q) {
-							micro = false;
 							connection.sendSpeakStopCommand();
+							micro = false;
 						}
 					}
 				}
@@ -132,6 +134,7 @@ public class MainForm<JForm> {
 	public MainForm() throws IOException {
 		frame = new JFrame();
 		frame.setBounds(100, 100, 850, 400);
+		isConnected = false;
 		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
 		manager.addKeyEventDispatcher(new MyDispatcher());
 		initMicro();
@@ -201,7 +204,6 @@ public class MainForm<JForm> {
 		nickField = new JTextField();
 		nickField.setMaximumSize(new Dimension(150, 20));
 		nickField.setToolTipText("You must write your nick for applying");
-		nickField.addKeyListener(keyAdapterForQ);
 		panel_nick.add(nickField);
 		nickField.setColumns(10);
 		JPanel panel_connection = new JPanel();
@@ -237,7 +239,6 @@ public class MainForm<JForm> {
 		panel_connection.add(remoteAddrField);
 		remoteAddrField.setColumns(10);
 		remoteAddrField.setToolTipText("You must press Enter to continue");
-		remoteAddrField.addKeyListener(keyAdapterForQ);
 		connectButt = new JButton("Connect");
 		connectButt.setAlignmentX(Component.CENTER_ALIGNMENT);
 		panel_connection.add(connectButt);
@@ -264,7 +265,6 @@ public class MainForm<JForm> {
 		messageArea.setLineWrap(true);
 		messageArea.setEnabled(false);
 		bot_panel.add(messageArea);
-		messageArea.addKeyListener(keyAdapterForQ);
 		send = new JButton("Send");
 		send.setMinimumSize(new Dimension(60, 25));
 		send.setMaximumSize(new Dimension(100, 50));
@@ -303,6 +303,7 @@ public class MainForm<JForm> {
 						forDisconnect();
 						commandLT.stop();
 						connection = null;
+						isConnected = false;
 						if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
 							int reply = JOptionPane.showConfirmDialog(null,
 									"Do you want to save this person to your contact list", "",
@@ -328,18 +329,19 @@ public class MainForm<JForm> {
 
 		connectButt.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				if (remoteAddrField.getText() != "") {
+				if (!remoteAddrField.getText().equals("")) {
 					String login;
 					login = nickField.getText();
 					caller = new Caller(login, remoteAddrField.getText());
 					try {
 						connection = caller.call();
+						connection.sendNickHello(nickField.getText());
 						if (connection != null) {
 							commandLT.setConnection(connection);
 							commandLT.start();
 							// ThreadOfCommand();
-							connection.sendNickHello(nickField.getText());
 							forConnect();
+							isConnected = true;
 						} else {
 							JOptionPane.showMessageDialog(null, "Couldn't connect this ip ");
 						}
@@ -514,50 +516,12 @@ public class MainForm<JForm> {
 				commandLT.setConnection(connection);
 				commandLT.start();
 				System.out.println("CLT started");
-				long t1 = System.currentTimeMillis();
-				long t2 = System.currentTimeMillis();
-				boolean b = false;
-				while (((t2 - t1) <= 100000) && !b) {
-					Command command = commandLT.getLastCommand();
-					try {
-					} catch (NullPointerException e) {
-						System.out.println("null");
-					}
-					if (command instanceof NickCommand) {
-						int reply = JOptionPane.showConfirmDialog(null,
-								"Do you want to accept incoming connection from user ".concat(command.toString()), "",
-								JOptionPane.YES_NO_OPTION);
-						System.out.println(reply);
-
-						try {
-							if (reply == 0) {
-								b = true;
-								connection.accept();
-								remoteAddrField.setText(callLT.getRemoteAddress().toString());
-								remoteLogiField.setText(command.toString());
-								forConnect();
-								break;
-							} else {
-								forDisconnect();
-								b = true;
-								connection.reject();
-								commandLT.stop();
-								connection = null;
-								break;
-							}
-
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					} else {
-						t2 = System.currentTimeMillis();
-					}
-
+				Command command = commandLT.getLastCommand();
+				try {
+				} catch (NullPointerException e) {
+					System.out.println("null");
 				}
-				System.out.println("Connection getted");
 			}
-
 		});
 	}
 
@@ -572,7 +536,34 @@ public class MainForm<JForm> {
 					model.addMessage(remoteLogiField.getText(), new Date(), commandLT.getLastCommand().toString());
 					textArea.update(model, new Object());
 				} else if (lastCommand instanceof NickCommand) {
-					remoteLogiField.setText(lastCommand.toString());
+					if (!isConnected) {
+						int reply = JOptionPane.showConfirmDialog(null,
+								"Do you want to accept incoming connection from user ".concat(lastCommand.toString()),
+								"", JOptionPane.YES_NO_OPTION);
+						System.out.println(reply);
+
+						try {
+							if (reply == 0) {
+								connection.accept();
+								remoteAddrField.setText(callLT.getRemoteAddress().toString());
+								remoteLogiField.setText(lastCommand.toString());
+								forConnect();
+							} else {
+								forDisconnect();
+								connection.reject();
+								commandLT.stop();
+								connection = null;
+							}
+
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						System.out.println("Connection getted");
+						isConnected = true;
+					} else {
+						remoteLogiField.setText(lastCommand.toString());
+					}
 				} else if (lastCommand instanceof FileCommand) {
 					int reply = JOptionPane.showConfirmDialog(null,
 							"Do you want to save file " + lastCommand.toString() + "?", "", JOptionPane.YES_NO_OPTION);
@@ -622,6 +613,7 @@ public class MainForm<JForm> {
 						model.addMessage(remoteLogiField.getText(), new Date(), "User was rejected");
 						textArea.update(model, new Object());
 						commandLT.stop();
+						isConnected = false;
 						forDisconnect();
 						break;
 					}
@@ -630,6 +622,7 @@ public class MainForm<JForm> {
 						textArea.update(model, new Object());
 						commandLT.stop();
 						forDisconnect();
+						isConnected = false;
 						break;
 					}
 					case APPLYFILE: {
@@ -660,6 +653,7 @@ public class MainForm<JForm> {
 		connectButt.setEnabled(true);
 		remoteAddrField.setText("");
 		remoteAddrField.setEnabled(true);
+		sendFile.setEnabled(false);
 	}
 
 	void forConnect() throws IOException {
