@@ -197,9 +197,11 @@ public class Connection {
 						line.start();
 						int count;
 						while (((count = inVoice.read(buffer, 0, buffer.length)) != -1)) {
-							System.out.println(count);
-							if (count > 0) {
-								line.write(buffer, 0, count);
+							if (!MainForm.isMute) {
+								System.out.println(count);
+								if (count > 0) {
+									line.write(buffer, 0, count);
+								}
 							}
 						}
 						line.drain();
@@ -211,7 +213,7 @@ public class Connection {
 				}
 			};
 			new Thread(r).start();
-			isVoiceListenerStarted=true;
+			isVoiceListenerStarted = true;
 		}
 	}
 

@@ -17,6 +17,8 @@ import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
@@ -34,6 +36,7 @@ import java.util.Observer;
 import java.util.Scanner;
 
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.SwingConstants;
 import javax.swing.JLabel;
@@ -79,6 +82,7 @@ public class MainForm<JForm> {
 	private Socket fileSocket;
 	private String filename;
 	private boolean isConnected;
+	public static boolean isMute;
 	public static TargetDataLine microphoneLine;
 
 	public static final AudioFormat FORMAT = new AudioFormat(44100, 16, 2, true, true);
@@ -193,7 +197,7 @@ public class MainForm<JForm> {
 			panel_login.add(panel_nick);
 			JLabel loginLabel = new JLabel("local login");
 			panel_nick.add(loginLabel);
-
+			isMute=false;
 			nickField = new JTextField();
 			nickField.setMaximumSize(new Dimension(150, 20));
 			nickField.setToolTipText("You must write your nick for applying");
@@ -206,10 +210,25 @@ public class MainForm<JForm> {
 			top_panel.add(panel_login);
 
 			final JButton nickApplyButton = new JButton("Apply");
-			panel_login.add(nickApplyButton);
-
+			JLabel mute = new JLabel();
+			mute.setText("Mute");
+			JCheckBox muteBox = new JCheckBox();
+			JPanel bot_panel_login = new JPanel();
+			bot_panel_login.setLayout(new BoxLayout(bot_panel_login, BoxLayout.X_AXIS));
+			panel_login.add(bot_panel_login);
+			bot_panel_login.add(nickApplyButton);
+			bot_panel_login.add(mute);
+			bot_panel_login.add(muteBox);
 			top_panel.add(panel_connection);
+			muteBox.addItemListener(new ItemListener(){
 
+				@Override
+				public void itemStateChanged(ItemEvent arg0) {
+					// TODO Auto-generated method stub
+					isMute=!isMute;
+				}
+				
+			});
 			JLabel remoteNickLabel = new JLabel("Remote login");
 			remoteNickLabel.setHorizontalAlignment(SwingConstants.RIGHT);
 			panel_connection.add(remoteNickLabel);
