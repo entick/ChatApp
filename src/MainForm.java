@@ -134,6 +134,7 @@ public class MainForm<JForm> {
 	public MainForm() throws IOException {
 		frame = new JFrame();
 		frame.setBounds(100, 100, 850, 400);
+		frame.setTitle("ChatApp 2015");
 		isConnected = false;
 		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
 		manager.addKeyEventDispatcher(new MyDispatcher());
@@ -335,13 +336,13 @@ public class MainForm<JForm> {
 					caller = new Caller(login, remoteAddrField.getText());
 					try {
 						connection = caller.call();
-						connection.sendNickHello(nickField.getText());
 						if (connection != null) {
 							commandLT.setConnection(connection);
 							commandLT.start();
 							// ThreadOfCommand();
 							forConnect();
 							isConnected = true;
+							connection.sendNickHello(nickField.getText());
 						} else {
 							JOptionPane.showMessageDialog(null, "Couldn't connect this ip ");
 						}
@@ -516,7 +517,6 @@ public class MainForm<JForm> {
 				commandLT.setConnection(connection);
 				commandLT.start();
 				System.out.println("CLT started");
-				Command command = commandLT.getLastCommand();
 				try {
 				} catch (NullPointerException e) {
 					System.out.println("null");

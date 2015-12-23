@@ -37,12 +37,6 @@ public class CommandListenerThread extends Observable implements Runnable {
 	public void run() {
 		while (!disconnected) {
 			try {
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
 				lastCommand = connection.receive();
 				assert lastCommand == null;
 				if (lastCommand != null){
@@ -66,7 +60,7 @@ public class CommandListenerThread extends Observable implements Runnable {
 				this.setChanged();
 				this.notifyObservers();
 				}
-			} catch (IOException e) {
+			} catch (IOException | NullPointerException e) {
 				e.printStackTrace();
 			}
 

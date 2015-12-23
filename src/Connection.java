@@ -1,3 +1,4 @@
+import java.awt.EventQueue;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -18,14 +19,16 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
 
 public class Connection {
 
 	private Socket socket;
 	private Socket voiceSocket;
 	private Socket fileSocket;
-	public static final int PORT = 28420;
+	public static final int PORT = 28411;
 	public static final String ENCODING = "UTF-8";
 	public static final char EOL = '\n';
 	private PrintStream outStream;
@@ -38,12 +41,14 @@ public class Connection {
 	private DataInputStream inVoice;
 	private DataOutputStream outVoice;
 	private File file;
+	private ProgressBar progressBar;
 
 	public Connection(Socket s, Socket fileSocket, Socket voiceSocket, String nickname)
 			throws IOException, SocketException {
 		this.socket = s;
 		this.fileSocket = fileSocket;
 		this.voiceSocket = voiceSocket;
+		this.voiceSocket.setTcpNoDelay(true);
 		outStream = new PrintStream(this.socket.getOutputStream(), true, ENCODING);
 		inStream = new Scanner(this.socket.getInputStream(), "UTF-8");
 		inSFile = new Scanner(this.fileSocket.getInputStream(), "UTF-8");
@@ -112,38 +117,43 @@ public class Connection {
 
 	public void sendFile() {
 		Runnable r = new Runnable() {
+			/* (non-Javadoc)
+			 * @see java.lang.Runnable#run()
+			 */
 			public void run() {
+				System.out.println("Sending " + file.getName() + "...");
+				System.out.println("Start");
 				try {
-					System.out.println("Sending " + file.getName() + "...");
-					System.out.println("Start");
-					try {
-						byte[] byteArray = new byte[1024];
-						FileInputStream fis = new FileInputStream(file.getPath());
-						long s;
-						s = file.length();
-						outPSFile.println(s);
-						int sp = (int) (s / 1024);
-						if (s % 1024 != 0)
-							sp++;
-						Thread.sleep(500);
-						while (s > 0) {
-							int i = fis.read(byteArray);
-							outFile.write(byteArray, 0, i);
-							System.out.println("sending...");
-							s -= i;
-						}
-						outFile.flush();
-						fis.close();
-						file = null;
-					} catch (UnknownHostException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					} catch (IOException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
+					byte[] byteArray = new byte[1024];
+					FileInputStream fis = new FileInputStream(file.getPath());
+					long s;
+					s = file.length();
+					outPSFile.println(s);
+					int sp = (int) (s / 1024);
+					if (s % 1024 != 0)
+						sp++;
+					progressBar = new ProgressBar(0, sp, "Sending "+file.getName());
+					Thread.sleep(500);
+					while (s > 0) {
+						int i = fis.read(byteArray);
+						outFile.write(byteArray, 0, i);
+						System.out.println("sending...");
+						s -= i;
+						progressBar.setValue(progressBar.getValue()+1);
 					}
-				} catch (Exception e) {
-
+					outFile.flush();
+					fis.close();
+					progressBar.dispose();
+					file = null;
+				} catch (UnknownHostException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
 			}
 		};
@@ -214,16 +224,19 @@ public class Connection {
 					int sp = (int) (s / 1024);
 					if (s % 1024 != 0)
 						sp++;
+					progressBar = new ProgressBar(0,sp, "Recieving "+filename);
 					while (s > 0) {
 						int i = inFile.read(byteArray);
 						fos.write(byteArray, 0, i);
 						s -= i;
+						progressBar.setValue(progressBar.getValue()+1);
 					}
 					fos.close();
+					progressBar.dispose();
+					new JOptionPane().showMessageDialog(null, "Recieved " + filename);
 				} catch (IOException e) {
-					System.err.println("Recieve IO Error");
+					new JOptionPane().showMessageDialog(null, "Error download file");
 				}
-				new JOptionPane().showMessageDialog(null, "Recieved " + filename);
 			}
 		};
 		new Thread(r).start();

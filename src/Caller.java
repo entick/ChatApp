@@ -48,12 +48,12 @@ public class Caller {
 			pw.println(key);
 			pw.flush();
 			Socket files= new Socket();
-			files.connect(remoteAddress, 100);
+			files.connect(remoteAddress, 30000);
 			pw = new PrintWriter(files.getOutputStream());
 			pw.println(key);
 			pw.flush();
 			Socket voice = new Socket();
-			voice.connect(remoteAddress, 100);
+			voice.connect(remoteAddress, 0);
 			pw = new PrintWriter(voice.getOutputStream());
 			pw.println(key);
 			pw.flush();
