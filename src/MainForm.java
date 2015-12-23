@@ -6,6 +6,7 @@ import javax.swing.JScrollPane;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.TargetDataLine;
 import javax.swing.BorderFactory;
@@ -112,391 +113,386 @@ public class MainForm<JForm> {
 		}
 	}
 
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
-		Class.forName("com.mysql.jdbc.Driver");
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					MainForm window = new MainForm();
-					window.frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
-	}
-
 	/**
 	 * Create the application.
 	 * 
 	 * @throws IOException
 	 */
-	public MainForm() throws IOException {
-		frame = new JFrame();
-		frame.setBounds(100, 100, 850, 400);
-		frame.setTitle("ChatApp 2015");
-		isConnected = false;
-		KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-		manager.addKeyEventDispatcher(new MyDispatcher());
-		initMicro();
-		frame.addWindowListener(new WindowListener() {
+	public MainForm(Mixer mixer) throws IOException {
+		try {
+			DataLine.Info lineInfo = new DataLine.Info(TargetDataLine.class, MainForm.FORMAT);
+			microphoneLine = (TargetDataLine) mixer.getLine(lineInfo);
+			microphoneLine.open(MainForm.FORMAT);
+			microphoneLine.start();
+			frame = new JFrame();
+			frame.setVisible(true);
+			frame.setBounds(100, 100, 850, 400);
+			frame.setTitle("ChatApp 2015");
+			isConnected = false;
+			KeyboardFocusManager manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+			manager.addKeyEventDispatcher(new MyDispatcher());
+			frame.addWindowListener(new WindowListener() {
 
-			public void windowActivated(WindowEvent arg0) {
-				// TODO Auto-generated method stub
+				public void windowActivated(WindowEvent arg0) {
+					// TODO Auto-generated method stub
 
-			}
-
-			public void windowClosed(WindowEvent arg0) {
-				// TODO Auto-generated method stub
-			}
-
-			public void windowClosing(WindowEvent arg0) {
-				// TODO Auto-generated method stub
-				try {
-					commandLT.stop();
-					server.goOffline();
-				} catch (NullPointerException e) {
-					System.out.println("CLT");
 				}
-				if (connection != null)
+
+				public void windowClosed(WindowEvent arg0) {
+					// TODO Auto-generated method stub
+				}
+
+				public void windowClosing(WindowEvent arg0) {
+					// TODO Auto-generated method stub
 					try {
-						connection.disconnect();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				System.exit(0);
-			}
-
-			public void windowDeactivated(WindowEvent arg0) {
-				// TODO Auto-generated method stub
-
-			}
-
-			public void windowDeiconified(WindowEvent arg0) {
-				// TODO Auto-generated method stub
-
-			}
-
-			public void windowIconified(WindowEvent arg0) {
-				// TODO Auto-generated method stub
-
-			}
-
-			public void windowOpened(WindowEvent arg0) {
-				// TODO Auto-generated method stub
-
-			}
-
-		});
-		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
-		JPanel mainPanel = new JPanel();
-		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-		JPanel top_panel = new JPanel();
-		top_panel.setLayout(new BoxLayout(top_panel, BoxLayout.X_AXIS));
-		JPanel panel_login = new JPanel();
-		panel_login.setLayout(new BoxLayout(panel_login, BoxLayout.Y_AXIS));
-		JPanel panel_nick = new JPanel();
-		panel_nick.setLayout(new BoxLayout(panel_nick, BoxLayout.X_AXIS));
-		panel_login.add(panel_nick);
-		JLabel loginLabel = new JLabel("local login");
-		panel_nick.add(loginLabel);
-
-		nickField = new JTextField();
-		nickField.setMaximumSize(new Dimension(150, 20));
-		nickField.setToolTipText("You must write your nick for applying");
-		panel_nick.add(nickField);
-		nickField.setColumns(10);
-		JPanel panel_connection = new JPanel();
-		panel_connection.setMaximumSize(new Dimension(32767, 100));
-		panel_connection.setLayout(new GridLayout(2, 3));
-		mainPanel.add(top_panel);
-		top_panel.add(panel_login);
-
-		final JButton nickApplyButton = new JButton("Apply");
-		panel_login.add(nickApplyButton);
-
-		top_panel.add(panel_connection);
-
-		JLabel remoteNickLabel = new JLabel("Remote login");
-		remoteNickLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-		panel_connection.add(remoteNickLabel);
-
-		remoteLogiField = new JTextField();
-		remoteLogiField.setMaximumSize(new Dimension(150, 20));
-		remoteLogiField.setEnabled(false);
-		panel_connection.add(remoteLogiField);
-		remoteLogiField.setColumns(10);
-
-		discButton = new JButton("Disconnect");
-		discButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-		panel_connection.add(discButton);
-		discButton.setEnabled(false);
-		JLabel remoteAddrLabel = new JLabel("Remote addr");
-		remoteAddrLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-		panel_connection.add(remoteAddrLabel);
-		remoteAddrField = new JTextField();
-		remoteAddrField.setMaximumSize(new Dimension(150, 20));
-		panel_connection.add(remoteAddrField);
-		remoteAddrField.setColumns(10);
-		remoteAddrField.setToolTipText("You must press Enter to continue");
-		connectButt = new JButton("Connect");
-		connectButt.setAlignmentX(Component.CENTER_ALIGNMENT);
-		panel_connection.add(connectButt);
-		connectButt.setEnabled(false);
-		JPanel main_panel = new JPanel();
-		main_panel.setLayout(new GridLayout(1, 1));
-		JPanel bot_panel = new JPanel();
-		bot_panel.setLayout(new BoxLayout(bot_panel, BoxLayout.X_AXIS));
-		mainPanel.add(main_panel);
-		model = new HistoryModel();
-		textArea = new HistoryView(model);
-		textArea.setBackground(new Color(255, 255, 204));
-		textArea.setBorder(new LineBorder(Color.CYAN, 3));
-		textArea.setEditable(false);
-		textArea.setLineWrap(true);
-		textArea.setRows(10);
-		JScrollPane scroll = new JScrollPane(textArea);
-		scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-		main_panel.add(scroll);
-		mainPanel.add(bot_panel);
-		messageArea = new JTextArea();
-		messageArea.setMinimumSize(new Dimension(16, 4));
-		messageArea.setMaximumSize(new Dimension(800, 100));
-		messageArea.setLineWrap(true);
-		messageArea.setEnabled(false);
-		bot_panel.add(messageArea);
-		send = new JButton("Send");
-		send.setMinimumSize(new Dimension(60, 25));
-		send.setMaximumSize(new Dimension(100, 50));
-		send.setAlignmentX(Component.CENTER_ALIGNMENT);
-		send.setEnabled(false);
-		bot_panel.add(send);
-		sendFile = new JButton("SendFile");
-		sendFile.setMinimumSize(new Dimension(60, 25));
-		sendFile.setMaximumSize(new Dimension(100, 50));
-		sendFile.setAlignmentX(Component.CENTER_ALIGNMENT);
-		sendFile.setEnabled(false);
-		bot_panel.add(sendFile);
-
-		final JPanel contactsPanel = new JPanel();
-		frame.getContentPane().add(contactsPanel);
-		contactsPanel.setPreferredSize(new Dimension(230, 400));
-		// contactsPanel.setMinimumSize(new Dimension(50, 100));
-		contactsPanel.setMaximumSize(new Dimension(800, 800));
-		contactsPanel.setLayout(new BoxLayout(contactsPanel, BoxLayout.Y_AXIS));
-		JLabel name = new JLabel("List of person on server");
-		name.setHorizontalAlignment(JLabel.CENTER);
-		contactsPanel.add(name);
-
-		contactsPanel.setBorder(BorderFactory.createEtchedBorder());
-		JPanel forButton1 = new JPanel();
-
-		frame.getContentPane().add(mainPanel);
-		discButton.addActionListener(new ActionListener() {
-
-			public void actionPerformed(ActionEvent e) {
-
-				try {
-					if (connection != null) {
-
-						connection.disconnect();
-						forDisconnect();
 						commandLT.stop();
-						connection = null;
-						isConnected = false;
-						if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
-							int reply = JOptionPane.showConfirmDialog(null,
-									"Do you want to save this person to your contact list", "",
-									JOptionPane.YES_NO_OPTION);
-							if (reply == 0) {
-								ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
-										remoteAddrField.getText());
-								modelForCont.addLocalNick();
-								local.addElement(modelForCont.toString());
-								list1.setModel(local);
-								frame.validate();
-							}
+						server.goOffline();
+					} catch (NullPointerException e) {
+						System.out.println("CLT");
+					}
+					if (connection != null)
+						try {
+							connection.disconnect();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
 						}
-
-					}
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-
-			}
-
-		});
-
-		connectButt.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (!remoteAddrField.getText().equals("")) {
-					String login;
-					login = nickField.getText();
-					caller = new Caller(login, remoteAddrField.getText());
-					try {
-						connection = caller.call();
-						if (connection != null) {
-							commandLT.setConnection(connection);
-							commandLT.start();
-							// ThreadOfCommand();
-							forConnect();
-							isConnected = true;
-							connection.sendNickHello(nickField.getText());
-						} else {
-							JOptionPane.showMessageDialog(null, "Couldn't connect this ip ");
-						}
-					} catch (InterruptedException e1) {
-
-						e1.printStackTrace();
-					} catch (UnsupportedEncodingException e1) {
-
-						e1.printStackTrace();
-					} catch (IOException e1) {
-
-						e1.printStackTrace();
-					}
-
-				} else {
-					JOptionPane.showMessageDialog(null, "You must write remote address ");
-				}
-			}
-		});
-		messageArea.addKeyListener(new KeyAdapter() {
-			public void keyPressed(KeyEvent e) {
-				if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-					try {
-						connection.sendMessage(messageArea.getText());
-						model.addMessage(nickField.getText(), new Date(), messageArea.getText());
-						textArea.update(model, new Object());
-						messageArea.setText("");
-
-					} catch (UnsupportedEncodingException e1) {
-						e1.printStackTrace();
-					} catch (IOException e1) {
-						e1.printStackTrace();
-					}
-
-				}
-			}
-		});
-		send.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					if (!messageArea.getText().equals("")) {
-						connection.sendMessage(messageArea.getText());
-						model.addMessage(nickField.getText(), new Date(), messageArea.getText());
-
-						textArea.update(model, new Object());
-						messageArea.setText("");
-
-					}
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				}
-			}
-
-		});
-		sendFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				JFileChooser fileopen = new JFileChooser();
-				int ret = fileopen.showDialog(null, "Открыть файл");
-				if (ret == JFileChooser.APPROVE_OPTION) {
-					File file = fileopen.getSelectedFile();
-					connection.sendCommandFile(file);
-				}
-			}
-		});
-		nickApplyButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				if (nickField.getText().equals("")) {
-					login = "unnamed";
-				} else
-					login = nickField.getText();
-				boolean isCorrectLogin = false;
-				for (int i = 0; i < login.toCharArray().length; i++)
-					if (login.toCharArray()[i] != ' ') {
-						isCorrectLogin = true;
-						break;
-					}
-				if (!isCorrectLogin) {
-					login = "unnamed";
-				}
-				while (login.charAt(0) == ' ')
-					login = login.substring(1);
-				nickField.setText(login);
-				nickField.setEnabled(false);
-				try {
-					callLT = new CallListenerThread();
-					callLT.start();
-					commandLT = new CommandListenerThread();
-					ThreadOfCall();
-					ThreadOfCommand();
-					connectButt.setEnabled(true);
-					nickApplyButton.setEnabled(false);
-					callLT.setLocalNick(login);
-					Runnable r = new Runnable() {
-						public void run() {
-							server = new ServerConnection(login);
-							server.connect();
-							server.goOnline();
-							try {
-								friends = new ContactsView(server);
-								list = new JList();
-								list.setModel(friends);
-								local = new LocalContactsView();
-								local.writeLocalNicks();
-								list1 = new JList();
-								list1.setModel(local);
-								JScrollPane scroll1 = new JScrollPane(list);
-								scroll1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-								JScrollPane scroll2 = new JScrollPane(list1);
-								scroll2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-								contactsPanel.add(scroll1);
-								JLabel name = new JLabel("List of local contacts");
-								name.setHorizontalAlignment(JLabel.CENTER);
-								contactsPanel.add(name);
-								contactsPanel.add(scroll2);
-								frame.validate();
-								list.addListSelectionListener(new ListSelectionListener() {
-									public void valueChanged(ListSelectionEvent e) {
-										if (connection == null) {
-											String[] str = list.getSelectedValue().toString().split(" ");
-											remoteLogiField.setText(str[0]);
-											remoteAddrField.setText(server.getIpForNick(str[0]));
-										} else {
-											JOptionPane.showMessageDialog(null, "You must disconnect to choose");
-										}
-									}
-								});
-								list1.addListSelectionListener(new ListSelectionListener() {
-									public void valueChanged(ListSelectionEvent e) {
-										if (connection == null) {
-											String[] str = list1.getSelectedValue().toString().split("\\|");
-											remoteLogiField.setText(str[0]);
-											remoteAddrField.setText(str[1]);
-										} else {
-											JOptionPane.showMessageDialog(null, "You must disconnect to choose");
-										}
-									}
-
-								});
-							} catch (IOException e1) {
-								System.out.println("Server connection error");
-							}
-						}
-					};
-					new Thread(r).start();
-				} catch (BindException e2) {
-					e2.printStackTrace();
-					JOptionPane.showMessageDialog(null, "You can't open two examples of one program");
 					System.exit(0);
-				} catch (IOException e1) {
-					e1.printStackTrace();
 				}
-			}
 
-		});
+				public void windowDeactivated(WindowEvent arg0) {
+					// TODO Auto-generated method stub
+
+				}
+
+				public void windowDeiconified(WindowEvent arg0) {
+					// TODO Auto-generated method stub
+
+				}
+
+				public void windowIconified(WindowEvent arg0) {
+					// TODO Auto-generated method stub
+
+				}
+
+				public void windowOpened(WindowEvent arg0) {
+					// TODO Auto-generated method stub
+
+				}
+
+			});
+			frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
+			JPanel mainPanel = new JPanel();
+			mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+			JPanel top_panel = new JPanel();
+			top_panel.setLayout(new BoxLayout(top_panel, BoxLayout.X_AXIS));
+			JPanel panel_login = new JPanel();
+			panel_login.setLayout(new BoxLayout(panel_login, BoxLayout.Y_AXIS));
+			JPanel panel_nick = new JPanel();
+			panel_nick.setLayout(new BoxLayout(panel_nick, BoxLayout.X_AXIS));
+			panel_login.add(panel_nick);
+			JLabel loginLabel = new JLabel("local login");
+			panel_nick.add(loginLabel);
+
+			nickField = new JTextField();
+			nickField.setMaximumSize(new Dimension(150, 20));
+			nickField.setToolTipText("You must write your nick for applying");
+			panel_nick.add(nickField);
+			nickField.setColumns(10);
+			JPanel panel_connection = new JPanel();
+			panel_connection.setMaximumSize(new Dimension(32767, 100));
+			panel_connection.setLayout(new GridLayout(2, 3));
+			mainPanel.add(top_panel);
+			top_panel.add(panel_login);
+
+			final JButton nickApplyButton = new JButton("Apply");
+			panel_login.add(nickApplyButton);
+
+			top_panel.add(panel_connection);
+
+			JLabel remoteNickLabel = new JLabel("Remote login");
+			remoteNickLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+			panel_connection.add(remoteNickLabel);
+
+			remoteLogiField = new JTextField();
+			remoteLogiField.setMaximumSize(new Dimension(150, 20));
+			remoteLogiField.setEnabled(false);
+			panel_connection.add(remoteLogiField);
+			remoteLogiField.setColumns(10);
+
+			discButton = new JButton("Disconnect");
+			discButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+			panel_connection.add(discButton);
+			discButton.setEnabled(false);
+			JLabel remoteAddrLabel = new JLabel("Remote addr");
+			remoteAddrLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+			panel_connection.add(remoteAddrLabel);
+			remoteAddrField = new JTextField();
+			remoteAddrField.setMaximumSize(new Dimension(150, 20));
+			panel_connection.add(remoteAddrField);
+			remoteAddrField.setColumns(10);
+			remoteAddrField.setToolTipText("You must press Enter to continue");
+			connectButt = new JButton("Connect");
+			connectButt.setAlignmentX(Component.CENTER_ALIGNMENT);
+			panel_connection.add(connectButt);
+			connectButt.setEnabled(false);
+			JPanel main_panel = new JPanel();
+			main_panel.setLayout(new GridLayout(1, 1));
+			JPanel bot_panel = new JPanel();
+			bot_panel.setLayout(new BoxLayout(bot_panel, BoxLayout.X_AXIS));
+			mainPanel.add(main_panel);
+			model = new HistoryModel();
+			textArea = new HistoryView(model);
+			textArea.setBackground(new Color(255, 255, 204));
+			textArea.setBorder(new LineBorder(Color.CYAN, 3));
+			textArea.setEditable(false);
+			textArea.setLineWrap(true);
+			textArea.setRows(10);
+			JScrollPane scroll = new JScrollPane(textArea);
+			scroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+			main_panel.add(scroll);
+			mainPanel.add(bot_panel);
+			messageArea = new JTextArea();
+			messageArea.setMinimumSize(new Dimension(16, 4));
+			messageArea.setMaximumSize(new Dimension(800, 100));
+			messageArea.setLineWrap(true);
+			messageArea.setEnabled(false);
+			bot_panel.add(messageArea);
+			send = new JButton("Send");
+			send.setMinimumSize(new Dimension(60, 25));
+			send.setMaximumSize(new Dimension(100, 50));
+			send.setAlignmentX(Component.CENTER_ALIGNMENT);
+			send.setEnabled(false);
+			bot_panel.add(send);
+			sendFile = new JButton("SendFile");
+			sendFile.setMinimumSize(new Dimension(60, 25));
+			sendFile.setMaximumSize(new Dimension(100, 50));
+			sendFile.setAlignmentX(Component.CENTER_ALIGNMENT);
+			sendFile.setEnabled(false);
+			bot_panel.add(sendFile);
+
+			final JPanel contactsPanel = new JPanel();
+			frame.getContentPane().add(contactsPanel);
+			contactsPanel.setPreferredSize(new Dimension(230, 400));
+			// contactsPanel.setMinimumSize(new Dimension(50, 100));
+			contactsPanel.setMaximumSize(new Dimension(800, 800));
+			contactsPanel.setLayout(new BoxLayout(contactsPanel, BoxLayout.Y_AXIS));
+			JLabel name = new JLabel("List of person on server");
+			name.setHorizontalAlignment(JLabel.CENTER);
+			contactsPanel.add(name);
+
+			contactsPanel.setBorder(BorderFactory.createEtchedBorder());
+			JPanel forButton1 = new JPanel();
+
+			frame.getContentPane().add(mainPanel);
+			discButton.addActionListener(new ActionListener() {
+
+				public void actionPerformed(ActionEvent e) {
+
+					try {
+						if (connection != null) {
+
+							connection.disconnect();
+							forDisconnect();
+							commandLT.stop();
+							connection = null;
+							isConnected = false;
+							if (!local.findNick(remoteLogiField.getText(), remoteAddrField.getText())) {
+								int reply = JOptionPane.showConfirmDialog(null,
+										"Do you want to save this person to your contact list", "",
+										JOptionPane.YES_NO_OPTION);
+								if (reply == 0) {
+									ContactsModel modelForCont = new ContactsModel(remoteLogiField.getText(),
+											remoteAddrField.getText());
+									modelForCont.addLocalNick();
+									local.addElement(modelForCont.toString());
+									list1.setModel(local);
+									frame.validate();
+								}
+							}
+
+						}
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+
+				}
+
+			});
+
+			connectButt.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					if (!remoteAddrField.getText().equals("")) {
+						String login;
+						login = nickField.getText();
+						caller = new Caller(login, remoteAddrField.getText());
+						try {
+							connection = caller.call();
+							if (connection != null) {
+								commandLT.setConnection(connection);
+								commandLT.start();
+								// ThreadOfCommand();
+								forConnect();
+								isConnected = true;
+								connection.sendNickHello(nickField.getText());
+							} else {
+								JOptionPane.showMessageDialog(null, "Couldn't connect this ip ");
+							}
+						} catch (InterruptedException e1) {
+
+							e1.printStackTrace();
+						} catch (UnsupportedEncodingException e1) {
+
+							e1.printStackTrace();
+						} catch (IOException e1) {
+
+							e1.printStackTrace();
+						}
+
+					} else {
+						JOptionPane.showMessageDialog(null, "You must write remote address ");
+					}
+				}
+			});
+			messageArea.addKeyListener(new KeyAdapter() {
+				public void keyPressed(KeyEvent e) {
+					if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+						try {
+							connection.sendMessage(messageArea.getText());
+							model.addMessage(nickField.getText(), new Date(), messageArea.getText());
+							textArea.update(model, new Object());
+							messageArea.setText("");
+
+						} catch (UnsupportedEncodingException e1) {
+							e1.printStackTrace();
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+
+					}
+				}
+			});
+			send.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					try {
+						if (!messageArea.getText().equals("")) {
+							connection.sendMessage(messageArea.getText());
+							model.addMessage(nickField.getText(), new Date(), messageArea.getText());
+
+							textArea.update(model, new Object());
+							messageArea.setText("");
+
+						}
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				}
+
+			});
+			sendFile.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					JFileChooser fileopen = new JFileChooser();
+					int ret = fileopen.showDialog(null, "Открыть файл");
+					if (ret == JFileChooser.APPROVE_OPTION) {
+						File file = fileopen.getSelectedFile();
+						connection.sendCommandFile(file);
+					}
+				}
+			});
+			nickApplyButton.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					if (nickField.getText().equals("")) {
+						login = "unnamed";
+					} else
+						login = nickField.getText();
+					boolean isCorrectLogin = false;
+					for (int i = 0; i < login.toCharArray().length; i++)
+						if (login.toCharArray()[i] != ' ') {
+							isCorrectLogin = true;
+							break;
+						}
+					if (!isCorrectLogin) {
+						login = "unnamed";
+					}
+					while (login.charAt(0) == ' ')
+						login = login.substring(1);
+					nickField.setText(login);
+					nickField.setEnabled(false);
+					try {
+						callLT = new CallListenerThread();
+						callLT.start();
+						commandLT = new CommandListenerThread();
+						ThreadOfCall();
+						ThreadOfCommand();
+						connectButt.setEnabled(true);
+						nickApplyButton.setEnabled(false);
+						callLT.setLocalNick(login);
+						Runnable r = new Runnable() {
+							public void run() {
+								server = new ServerConnection(login);
+								server.connect();
+								server.goOnline();
+								try {
+									friends = new ContactsView(server);
+									list = new JList();
+									list.setModel(friends);
+									local = new LocalContactsView();
+									local.writeLocalNicks();
+									list1 = new JList();
+									list1.setModel(local);
+									JScrollPane scroll1 = new JScrollPane(list);
+									scroll1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+									JScrollPane scroll2 = new JScrollPane(list1);
+									scroll2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+									contactsPanel.add(scroll1);
+									JLabel name = new JLabel("List of local contacts");
+									name.setHorizontalAlignment(JLabel.CENTER);
+									contactsPanel.add(name);
+									contactsPanel.add(scroll2);
+									frame.validate();
+									list.addListSelectionListener(new ListSelectionListener() {
+										public void valueChanged(ListSelectionEvent e) {
+											if (connection == null) {
+												String[] str = list.getSelectedValue().toString().split(" ");
+												remoteLogiField.setText(str[0]);
+												remoteAddrField.setText(server.getIpForNick(str[0]));
+											} else {
+												JOptionPane.showMessageDialog(null, "You must disconnect to choose");
+											}
+										}
+									});
+									list1.addListSelectionListener(new ListSelectionListener() {
+										public void valueChanged(ListSelectionEvent e) {
+											if (connection == null) {
+												String[] str = list1.getSelectedValue().toString().split("\\|");
+												remoteLogiField.setText(str[0]);
+												remoteAddrField.setText(str[1]);
+											} else {
+												JOptionPane.showMessageDialog(null, "You must disconnect to choose");
+											}
+										}
+
+									});
+								} catch (IOException e1) {
+									System.out.println("Server connection error");
+								}
+							}
+						};
+						new Thread(r).start();
+					} catch (BindException e2) {
+						e2.printStackTrace();
+						JOptionPane.showMessageDialog(null, "You can't open two examples of one program");
+						System.exit(0);
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				}
+
+			});
+		} catch (LineUnavailableException e3) {
+			// TODO Auto-generated catch block
+			e3.printStackTrace();
+		}
 	}
 
 	public void ThreadOfCall() throws IOException {
@@ -825,40 +821,4 @@ public class MainForm<JForm> {
 		new Thread(r).start();
 	}
 
-	private void initMicro() {
-		DataLine.Info lineInfo = new DataLine.Info(TargetDataLine.class, MainForm.FORMAT);
-		Mixer.Info[] mixerInfos = AudioSystem.getMixerInfo();
-		System.out.println("----------------Mixers Available----------------");
-		for (int i = 0; i < mixerInfos.length; i++) {
-			try {
-				System.out.println(new String(mixerInfos[i].toString().getBytes("Windows-1252"), "Windows-1251"));
-			} catch (UnsupportedEncodingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		System.out.println("----------------------Mixers Supporting Line----------------------");
-		for (int i = 0; i < mixerInfos.length; i++) {
-			Mixer m = AudioSystem.getMixer(mixerInfos[i]);
-			if (m.isLineSupported(lineInfo)) {
-				try {
-					System.out.println(
-							i + " " + new String(mixerInfos[i].toString().getBytes("Windows-1252"), "Windows-1251"));
-				} catch (UnsupportedEncodingException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		}
-		try {
-			Mixer mixerS = AudioSystem.getMixer(mixerInfos[3]);
-			microphoneLine = (TargetDataLine) mixerS.getLine(lineInfo);
-			microphoneLine.open(MainForm.FORMAT);
-			microphoneLine.start();
-			// Thread captureThread = new Thread(new CaptureThread());
-			// captureThread.start();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
 }

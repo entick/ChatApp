@@ -42,6 +42,7 @@ public class Connection {
 	private DataOutputStream outVoice;
 	private File file;
 	private ProgressBar progressBar;
+	private boolean isVoiceListenerStarted;
 
 	public Connection(Socket s, Socket fileSocket, Socket voiceSocket, String nickname)
 			throws IOException, SocketException {
@@ -58,6 +59,7 @@ public class Connection {
 		inVoice = new DataInputStream(this.voiceSocket.getInputStream());
 		outVoice = new DataOutputStream(this.voiceSocket.getOutputStream());
 		this.nickname = nickname;
+		isVoiceListenerStarted = false;
 
 	}
 
@@ -117,7 +119,9 @@ public class Connection {
 
 	public void sendFile() {
 		Runnable r = new Runnable() {
-			/* (non-Javadoc)
+			/*
+			 * (non-Javadoc)
+			 * 
 			 * @see java.lang.Runnable#run()
 			 */
 			public void run() {
@@ -132,14 +136,14 @@ public class Connection {
 					int sp = (int) (s / 1024);
 					if (s % 1024 != 0)
 						sp++;
-					progressBar = new ProgressBar(0, sp, "Sending "+file.getName());
+					progressBar = new ProgressBar(0, sp, "Sending " + file.getName());
 					Thread.sleep(500);
 					while (s > 0) {
 						int i = fis.read(byteArray);
 						outFile.write(byteArray, 0, i);
 						System.out.println("sending...");
 						s -= i;
-						progressBar.setValue(progressBar.getValue()+1);
+						progressBar.setValue(progressBar.getValue() + 1);
 					}
 					outFile.flush();
 					fis.close();
@@ -182,30 +186,33 @@ public class Connection {
 	}
 
 	public void recieveVoice() {
-		Runnable r = new Runnable() {
-			public void run() {
-				byte buffer[] = new byte[(int) MainForm.FORMAT.getSampleRate() * MainForm.FORMAT.getFrameSize()];
-				try {
-					DataLine.Info info = new DataLine.Info(SourceDataLine.class, MainForm.FORMAT);
-					SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
-					line.open(MainForm.FORMAT);
-					line.start();
-					int count;
-					while (((count = inVoice.read(buffer, 0, buffer.length)) != -1)) {
-						System.out.println(count);
-						if (count > 0) {
-							line.write(buffer, 0, count);
+		if (!isVoiceListenerStarted) {
+			Runnable r = new Runnable() {
+				public void run() {
+					byte buffer[] = new byte[(int) MainForm.FORMAT.getSampleRate() * MainForm.FORMAT.getFrameSize()];
+					try {
+						DataLine.Info info = new DataLine.Info(SourceDataLine.class, MainForm.FORMAT);
+						SourceDataLine line = (SourceDataLine) AudioSystem.getLine(info);
+						line.open(MainForm.FORMAT);
+						line.start();
+						int count;
+						while (((count = inVoice.read(buffer, 0, buffer.length)) != -1)) {
+							System.out.println(count);
+							if (count > 0) {
+								line.write(buffer, 0, count);
+							}
 						}
+						line.drain();
+						line.close();
+					} catch (IOException | LineUnavailableException | IllegalArgumentException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
 					}
-					line.drain();
-					line.close();
-				} catch (IOException | LineUnavailableException | IllegalArgumentException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
 				}
-			}
-		};
-		new Thread(r).start();
+			};
+			new Thread(r).start();
+			isVoiceListenerStarted=true;
+		}
 	}
 
 	public void recieveFile(String filename) {
@@ -224,12 +231,12 @@ public class Connection {
 					int sp = (int) (s / 1024);
 					if (s % 1024 != 0)
 						sp++;
-					progressBar = new ProgressBar(0,sp, "Recieving "+filename);
+					progressBar = new ProgressBar(0, sp, "Recieving " + filename);
 					while (s > 0) {
 						int i = inFile.read(byteArray);
 						fos.write(byteArray, 0, i);
 						s -= i;
-						progressBar.setValue(progressBar.getValue()+1);
+						progressBar.setValue(progressBar.getValue() + 1);
 					}
 					fos.close();
 					progressBar.dispose();
